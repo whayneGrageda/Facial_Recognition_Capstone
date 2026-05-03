@@ -1,0 +1,173 @@
+"""Database Logger for Attendance System"""
+
+import psycopg2
+from psycopg2 import pool
+from datetime import datetime
+from typing import Optional
+
+class DatabaseLogger:
+    """Logs attendance records to PostgreSQL database"""
+    
+    def __init__(self, config):
+        """Initialize database connection"""
+        self.config = config
+        self.connection_pool = None
+        self._initialize_pool()
+    
+    def _initialize_pool(self):
+        """Initialize connection pool"""
+        try:
+            self.connection_pool = psycopg2.pool.SimpleConnectionPool(
+                1, 10,
+                host=self.config.DB_HOST,
+                port=self.config.DB_PORT,
+                database=self.config.DB_NAME,
+                user=self.config.DB_USER,
+                password=self.config.DB_PASSWORD
+            )
+            print(f"✓ Database connected: {self.config.DB_NAME}@{self.config.DB_HOST}")
+        except Exception as e:
+            print(f"✗ Database connection failed: {e}")
+            self.connection_pool = None
+    
+    def log_attendance(self, user_identifier: str, confidence: float, attendance_type: str = 'time-in') -> bool:
+        """
+        Log attendance for a recognized user
+        
+        Args:
+            user_identifier: Student ID, employee ID, or username
+            confidence: Recognition confidence score
+            attendance_type: 'time-in' or 'time-out'
+            
+        Returns:
+            True if logged successfully, False otherwise
+        """
+        if self.connection_pool is None:
+            print("ERROR: Database not connected")
+            return False
+        
+        conn = None
+        try:
+            conn = self.connection_pool.getconn()
+            cursor = conn.cursor()
+            
+            # First, find the user and determine their type
+            user_info = self._find_user(cursor, user_identifier)
+            
+            if user_info is None:
+                print(f"WARNING: User not found in database: {user_identifier}")
+                return False
+            
+            user_id, user_type, full_name = user_info
+            
+            # Insert attendance record with attendance_type
+            cursor.execute("""
+                INSERT INTO attendance (user_id, user_type, name, timestamp, attendance_type)
+                VALUES (%s, %s, %s, NOW(), %s)
+                RETURNING id
+            """, (user_id, user_type, full_name, attendance_type))
+            
+            attendance_id = cursor.fetchone()[0]
+            conn.commit()
+            
+            return True
+            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            print(f"ERROR logging attendance: {e}")
+            return False
+        
+        finally:
+            if conn:
+                self.connection_pool.putconn(conn)
+    
+    def _find_user(self, cursor, identifier: str) -> Optional[tuple]:
+        """
+        Find user by name (folder name from known_faces)
+        
+        Returns:
+            (user_id, user_type, full_name) or None
+        """
+        # Try college users (by name)
+        cursor.execute("""
+            SELECT id, 'college' as user_type, name
+            FROM users
+            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
+            LIMIT 1
+        """, (identifier,))
+        
+        result = cursor.fetchone()
+        if result:
+            return result
+        
+        # Try SHS users (by name)
+        cursor.execute("""
+            SELECT id, 'shs' as user_type, name
+            FROM shs_users
+            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
+            LIMIT 1
+        """, (identifier,))
+        
+        result = cursor.fetchone()
+        if result:
+            return result
+        
+        # Try faculty users (by name)
+        cursor.execute("""
+            SELECT id, 'faculty' as user_type, name
+            FROM faculty_users
+            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
+            LIMIT 1
+        """, (identifier,))
+        
+        result = cursor.fetchone()
+        if result:
+            return result
+        
+        # Try guests (by name)
+        cursor.execute("""
+            SELECT id, 'guest' as user_type, name
+            FROM guests
+            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))
+            LIMIT 1
+        """, (identifier,))
+        
+        result = cursor.fetchone()
+        if result:
+            return result
+        
+        return None
+    
+    def get_today_attendance_count(self) -> int:
+        """Get count of attendance records for today"""
+        if self.connection_pool is None:
+            return 0
+        
+        conn = None
+        try:
+            conn = self.connection_pool.getconn()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM attendance
+                WHERE DATE(timestamp) = CURRENT_DATE
+            """)
+            
+            count = cursor.fetchone()[0]
+            return count
+            
+        except Exception as e:
+            print(f"ERROR getting attendance count: {e}")
+            return 0
+        
+        finally:
+            if conn:
+                self.connection_pool.putconn(conn)
+    
+    def close(self):
+        """Close database connection pool"""
+        if self.connection_pool:
+            self.connection_pool.closeall()
+            print("Database connections closed")

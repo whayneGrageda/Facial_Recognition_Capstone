@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FaceTrack — Zero Breach. Zero Compromise.</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --black:     #0A0602;
+  --black2:    #0f0b06;
+  --brown:     #3E2008;
+  --brown-mid: #6B3A1F;
+  --brown-lt:  #9C6B3C;
+  --cream-dim: #D9C9A8;
+  --cream:     #F5EDD8;
+  --gold:      #C9A84C;
+  --gold-lt:   #E8C97A;
+  --gold-dk:   #8B6914;
+  --success:   #16a34a;
+  --error:     #dc2626;
+  --warn:      #C9A84C;
+  --border-dk: rgba(201,168,76,0.12);
+  --border-md: rgba(201,168,76,0.22);
+  --border-lt: rgba(201,168,76,0.35);
+  --glow:      rgba(201,168,76,0.15);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--black);
+  color: var(--cream);
+  overflow-x: hidden;
+}
+
+h1,h2,h3,h4 { font-family: 'Poppins', sans-serif; }
+
+/* scanline texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: rgba(10,6,2,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-dk);
+  padding: 0 6vw;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--cream);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.logo-icon {
+  width: 34px; height: 34px;
+  border: 1px solid var(--border-lt);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  background: rgba(201,168,76,0.08);
+  box-shadow: 0 0 12px rgba(201,168,76,0.1);
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+nav a {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--cream-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+  text-transform: uppercase;
+}
+
+nav a:hover { color: var(--gold-lt); }
+
+.nav-cta {
+  background: transparent !important;
+  border: 1px solid var(--border-lt) !important;
+  color: var(--gold-lt) !important;
+  padding: 8px 20px;
+  border-radius: 4px;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 0 14px rgba(201,168,76,0.1);
+  transition: background 0.2s, box-shadow 0.2s !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+}
+
+.nav-cta:hover {
+  background: rgba(201,168,76,0.1) !important;
+  box-shadow: 0 0 24px rgba(201,168,76,0.25) !important;
+  color: var(--gold-lt) !important;
+}
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 110px 6vw 80px;
+  gap: 4vw;
+  position: relative;
+  overflow: hidden;
+  background: var(--black);
+}
+
+/* grid bg */
+#hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(201,168,76,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,76,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* radial glow */
+.hero-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(100px);
+}
+
+.glow-gold {
+  width: 500px; height: 500px;
+  top: -100px; right: 0;
+  background: rgba(201,168,76,0.07);
+}
+
+.glow-brown {
+  width: 400px; height: 400px;
+  bottom: -100px; left: -50px;
+  background: rgba(62,32,8,0.6);
+}
+
+.hero-left { position: relative; z-index: 2; }
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid var(--border-md);
+  background: rgba(201,168,76,0.06);
+  padding: 6px 14px;
+  border-radius: 3px;
+  margin-bottom: 1.8rem;
+}
+
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--error);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(220,38,38,0.8);
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+.hero-title {
+  font-size: clamp(3rem, 5.5vw, 5.2rem);
+  font-weight: 800;
+  line-height: 1.0;
+  color: var(--cream);
+  letter-spacing: -0.03em;
+  margin-bottom: 0.4em;
+}
+
+.hero-title .gold-grad {
+  background: linear-gradient(135deg, var(--gold-lt), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-title .dim-line { color: var(--brown-lt); }
+
+.hero-sub {
+  font-size: 1rem;
+  color: var(--cream-dim);
+  line-height: 1.8;
+  max-width: 480px;
+  margin: 1.5rem 0 2.2rem;
+  opacity: 0.85;
+}
+
+.hero-sub strong { color: var(--cream); font-weight: 600; opacity: 1; }
+
+.cta-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
+}
+
+.btn-primary {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--black);
+  background: linear-gradient(135deg, var(--gold-lt), var(--gold));
+  padding: 14px 30px;
+  border-radius: 4px;
+  text-decoration: none;
+  box-shadow: 0 0 24px rgba(201,168,76,0.3);
+  transition: box-shadow 0.25s, transform 0.15s;
+  display: inline-block;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 40px rgba(201,168,76,0.5);
+  transform: translateY(-2px);
+}
+
+.btn-ghost {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cream-dim);
+  background: transparent;
+  border: 1px solid var(--border-md);
+  padding: 13px 28px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  display: inline-block;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold);
+  color: var(--gold-lt);
+  box-shadow: 0 0 16px rgba(201,168,76,0.12);
+}
+
+.hero-status {
+  display: flex;
+  gap: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-dk);
+}
+
+.hs-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.75rem;
+  color: var(--brown-lt);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.hs-dot { font-size: 0.5rem; color: var(--gold); }
+
+/* ── HERO RIGHT — terminal card ── */
+.hero-right {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.terminal {
+  width: 360px;
+  background: #0d0a05;
+  border: 1px solid var(--border-md);
+  border-radius: 10px;
+  box-shadow: 0 0 60px rgba(201,168,76,0.08), 0 0 120px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+.term-bar {
+  background: #150f07;
+  border-bottom: 1px solid var(--border-dk);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.term-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+
+.td-r { background: #3a0f0f; }
+.td-y { background: #3a2e0f; }
+.td-g { background: #0f3a1a; }
+
+.term-title {
+  font-family: 'Inter', monospace;
+  font-size: 0.68rem;
+  color: var(--brown-lt);
+  margin-left: 6px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.term-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* face scanner inside terminal */
+.face-scan-area {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  background: #0a0805;
+  border: 1px solid var(--border-dk);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* grid lines inside scanner */
+.face-scan-area::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(201,168,76,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,76,0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.face-ring {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  z-index: 2;
+}
+
+.face-ring-outer {
+  width: 110px; height: 110px;
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 50%;
+  position: absolute;
+  animation: spin 10s linear infinite;
+}
+
+.face-ring-inner {
+  width: 82px; height: 82px;
+  border: 1px dashed rgba(201,168,76,0.5);
+  border-radius: 50%;
+  position: absolute;
+  top: 14px; left: 14px;
+  animation: spin 6s linear infinite reverse;
+}
+
+.face-emoji {
+  position: absolute;
+  width: 60px; height: 60px;
+  top: 25px; left: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* scan line */
+.scan-beam {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  box-shadow: 0 0 10px rgba(201,168,76,0.7);
+  animation: scanbeam 2.4s ease-in-out infinite;
+  z-index: 3;
+}
+
+@keyframes scanbeam {
+  0%   { top: 20%; opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 80%; opacity: 0; }
+}
+
+/* bracket corners */
+.brk { position: absolute; width: 14px; height: 14px; border-color: var(--gold); border-style: solid; z-index: 4; }
+.brk-tl { top: 12px; left: 12px; border-width: 1px 0 0 1px; }
+.brk-tr { top: 12px; right: 12px; border-width: 1px 1px 0 0; }
+.brk-bl { bottom: 12px; left: 12px; border-width: 0 0 1px 1px; }
+.brk-br { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+
+/* terminal log lines */
+.log-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-line {
+  font-family: 'Inter', monospace;
+  font-size: 0.68rem;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.log-time { color: var(--brown-lt); flex-shrink: 0; }
+.log-type { flex-shrink: 0; font-weight: 700; }
+.log-type.ok { color: var(--success); }
+.log-type.warn { color: var(--warn); }
+.log-type.err { color: var(--error); }
+.log-msg { color: var(--cream-dim); }
+
+.log-cursor {
+  display: inline-block;
+  width: 7px; height: 12px;
+  background: var(--gold);
+  animation: cursor 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+@keyframes cursor { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* confidence bar */
+.conf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-dk);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.conf-label { font-size: 0.68rem; color: var(--brown-lt); flex-shrink: 0; letter-spacing: 0.08em; text-transform: uppercase; }
+.conf-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.conf-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dk), var(--gold-lt)); border-radius: 2px; width: 97%; box-shadow: 0 0 8px rgba(201,168,76,0.5); }
+.conf-val { font-size: 0.72rem; font-weight: 600; color: var(--gold-lt); flex-shrink: 0; font-family: 'Inter', monospace; }
+
+/* floating threat card */
+.threat-pill {
+  position: absolute;
+  top: -16px; left: -60px;
+  background: #0d0a05;
+  border: 1px solid rgba(220,38,38,0.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 20px rgba(220,38,38,0.1);
+}
+
+.threat-icon { font-size: 0.9rem; }
+.threat-text { display: flex; flex-direction: column; }
+.threat-big { font-size: 0.78rem; font-weight: 700; color: var(--error); font-family: 'Poppins', sans-serif; }
+.threat-small { font-size: 0.62rem; color: var(--brown-lt); }
+
+.clear-pill {
+  position: absolute;
+  bottom: -16px; right: -50px;
+  background: #0d0a05;
+  border: 1px solid rgba(22,163,74,0.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 20px rgba(22,163,74,0.08);
+}
+
+.clear-big { font-size: 0.78rem; font-weight: 700; color: var(--success); font-family: 'Poppins', sans-serif; }
+.clear-small { font-size: 0.62rem; color: var(--brown-lt); }
+
+/* ── SECTION COMMONS ── */
+.sec-eye {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.8rem;
+}
+
+.sec-eye::before {
+  content: '';
+  display: block;
+  width: 18px; height: 1px;
+  background: var(--gold);
+  box-shadow: 0 0 6px rgba(201,168,76,0.6);
+}
+
+.sec-title {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.sec-body {
+  font-size: 0.92rem;
+  color: var(--cream-dim);
+  line-height: 1.8;
+  opacity: 0.8;
+}
+
+/* ── THREAT STATS BAND ── */
+#threat-band {
+  padding: 60px 6vw;
+  border-top: 1px solid var(--border-dk);
+  border-bottom: 1px solid var(--border-dk);
+  background: linear-gradient(135deg, #0d0a05, #0A0602);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.tb-item {
+  padding: 0 2.5rem;
+  border-right: 1px solid var(--border-dk);
+  text-align: center;
+}
+
+.tb-item:last-child { border-right: none; }
+
+.tb-num {
+  font-family: 'Poppins', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--gold-lt), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+
+.tb-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brown-lt);
+}
+
+/* ── HOW ── */
+#how {
+  padding: 110px 6vw;
+  background: #0d0a05;
+  border-top: 1px solid var(--border-dk);
+}
+
+.how-header {
+  max-width: 560px;
+  margin-bottom: 4rem;
+}
+
+.how-header .sec-title { margin: 0.5rem 0 1rem; }
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border-dk);
+  border: 1px solid var(--border-dk);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.step-card {
+  background: #0d0a05;
+  padding: 2rem 1.8rem;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.step-card:hover { background: rgba(201,168,76,0.04); }
+
+.step-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.step-card:hover::after { opacity: 1; }
+
+.step-num {
+  font-family: 'Inter', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--gold-dk);
+  margin-bottom: 1.2rem;
+  text-transform: uppercase;
+}
+
+.step-icon { font-size: 1.6rem; margin-bottom: 0.8rem; }
+
+.step-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--cream);
+  margin-bottom: 0.5rem;
+}
+
+.step-desc {
+  font-size: 0.8rem;
+  color: var(--brown-lt);
+  line-height: 1.7;
+}
+
+/* ── ABOUT ── */
+#about {
+  padding: 120px 6vw;
+  background: var(--black);
+  position: relative;
+  overflow: hidden;
+}
+
+#about::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 40%;
+  height: 100%;
+  background: radial-gradient(ellipse at right, rgba(201,168,76,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6vw;
+  align-items: center;
+}
+
+.about-content .sec-title { margin: 0.6rem 0 1.2rem; }
+
+.about-text {
+  font-size: 0.92rem;
+  color: var(--cream-dim);
+  line-height: 1.8;
+  margin-bottom: 1rem;
+  opacity: 0.85;
+}
+
+.about-text strong { color: var(--cream); opacity: 1; font-weight: 600; }
+
+.about-specs {
+  margin: 1.8rem 0 2.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border-dk);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-dk);
+  transition: background 0.2s;
+}
+
+.spec-row:last-child { border-bottom: none; }
+.spec-row:hover { background: rgba(201,168,76,0.04); }
+
+.spec-key {
+  font-size: 0.78rem;
+  color: var(--brown-lt);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.spec-val {
+  font-family: 'Inter', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gold-lt);
+}
+
+.spec-val.ok { color: var(--success); }
+.spec-val.hi { color: var(--cream); }
+
+/* about right — incident panel */
+.about-panel {
+  background: #0d0a05;
+  border: 1px solid var(--border-md);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,0,0,0.5);
+}
+
+.panel-bar {
+  background: #150f07;
+  border-bottom: 1px solid var(--border-dk);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.panel-badge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--success);
+  background: rgba(22,163,74,0.1);
+  border: 1px solid rgba(22,163,74,0.2);
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.panel-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+
+.incident-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid var(--border-dk);
+  border-radius: 5px;
+  transition: border-color 0.2s;
+}
+
+.incident-row:hover { border-color: var(--border-md); }
+
+.inc-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.inc-status.ok { background: var(--success); box-shadow: 0 0 6px rgba(22,163,74,0.5); }
+.inc-status.warn { background: var(--warn); box-shadow: 0 0 6px rgba(201,168,76,0.5); }
+.inc-status.err { background: var(--error); box-shadow: 0 0 6px rgba(220,38,38,0.6); animation: blink 1.2s infinite; }
+
+.inc-info { flex: 1; }
+.inc-name { font-size: 0.78rem; font-weight: 600; color: var(--cream); }
+.inc-detail { font-size: 0.68rem; color: var(--brown-lt); margin-top: 1px; }
+
+.inc-time {
+  font-family: 'Inter', monospace;
+  font-size: 0.65rem;
+  color: var(--brown-lt);
+  flex-shrink: 0;
+}
+
+.panel-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-dk);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pf-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--brown-lt);
+}
+
+.pf-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── FEATURES ── */
+#features {
+  padding: 110px 6vw;
+  background: #0d0a05;
+  border-top: 1px solid var(--border-dk);
+}
+
+.features-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 3.5rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border-dk);
+  border: 1px solid var(--border-dk);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.feat-card {
+  background: #0d0a05;
+  padding: 2rem;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.feat-card:hover { background: rgba(201,168,76,0.03); }
+
+.feat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dk), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.feat-card:hover::before { opacity: 1; }
+
+.feat-icon {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.feat-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--cream);
+  margin-bottom: 0.5rem;
+}
+
+.feat-desc {
+  font-size: 0.8rem;
+  color: var(--brown-lt);
+  line-height: 1.7;
+}
+
+/* ── ALERT BAND ── */
+#alert-band {
+  padding: 80px 6vw;
+  background: linear-gradient(135deg, #150f07, #0A0602);
+  border-top: 1px solid var(--border-dk);
+  border-bottom: 1px solid var(--border-dk);
+  text-align: center;
+}
+
+.alert-quote {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: -0.02em;
+  max-width: 700px;
+  margin: 0 auto 1.2rem;
+  line-height: 1.3;
+}
+
+.alert-quote em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--gold-lt), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.alert-sub {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--brown-lt);
+  margin-bottom: 2rem;
+}
+
+/* ── FOOTER ── */
+footer {
+  background: var(--black2);
+  padding: 60px 6vw 30px;
+  border-top: 1px solid var(--border-dk);
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 3rem;
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid var(--border-dk);
+  margin-bottom: 2rem;
+}
+
+.footer-brand p { font-size: 0.8rem; color: var(--brown-lt); line-height: 1.7; max-width: 220px; margin-top: 0.8rem; }
+
+.footer-col h4 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1rem;
+}
+
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+
+.footer-col a {
+  font-size: 0.8rem;
+  color: var(--brown-lt);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-col a:hover { color: var(--gold-lt); }
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-copy {
+  font-family: 'Inter', monospace;
+  font-size: 0.72rem;
+  color: var(--brown-mid);
+  letter-spacing: 0.04em;
+}
+
+.footer-copy span { color: var(--gold-dk); }
+
+/* ── REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal.visible { opacity: 1; transform: none; }
+.rd1 { transition-delay: 0.1s; }
+.rd2 { transition-delay: 0.2s; }
+.rd3 { transition-delay: 0.3s; }
+.rd4 { transition-delay: 0.4s; }
+
+/* ── HERO ANIMS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.hero-eyebrow { animation: fadeUp 0.6s ease both 0.1s; }
+.hero-title   { animation: fadeUp 0.7s ease both 0.25s; }
+.hero-sub     { animation: fadeUp 0.7s ease both 0.4s; }
+.cta-row      { animation: fadeUp 0.7s ease both 0.52s; }
+.hero-status  { animation: fadeUp 0.7s ease both 0.64s; }
+.hero-right   { animation: fadeUp 0.8s ease both 0.3s; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo">
+    <div class="logo-icon">⬡</div>
+    Face<span style="color:var(--gold);">Track</span>
+  </a>
+  <ul>
+    <li><a href="#how">Protocol</a></li>
+    <li><a href="#about">Intel</a></li>
+    <li><a href="#features">Systems</a></li>
+    <li><a href="#alert-band" class="nav-cta">Deploy Now</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow glow-gold"></div>
+  <div class="hero-glow glow-brown"></div>
+
+  <div class="hero-left">
+    <div class="hero-eyebrow">
+      <span class="live-dot"></span>
+      Threat Detection Active
+    </div>
+    <h1 class="hero-title">
+      Zero Breach.<br />
+      <span class="gold-grad">Zero</span><br />
+      <span class="dim-line">Compromise.</span>
+    </h1>
+    <p class="hero-sub">
+      FaceTrack is a <strong>military-grade facial recognition security platform</strong> — identifying threats, verifying clearances, and logging every entry in real time. No blind spots. No exceptions.
+    </p>
+    <div class="cta-row">
+      <a href="#how" class="btn-primary">Deploy System</a>
+      <a href="#about" class="btn-ghost">View Intel</a>
+    </div>
+    <div class="hero-status">
+      <div class="hs-item"><span class="hs-dot">◆</span>SOC 2 Type II Certified</div>
+      <div class="hs-item"><span class="hs-dot">◆</span>256-bit AES Encrypted</div>
+      <div class="hs-item"><span class="hs-dot">◆</span>99.97% Accuracy</div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div style="position:relative;">
+      <div class="threat-pill">
+        <span class="threat-icon">⚠</span>
+        <div class="threat-text">
+          <span class="threat-big">THREAT BLOCKED</span>
+          <span class="threat-small">Unauthorized access · 03:41 AM</span>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="term-bar">
+          <div class="term-dot td-r"></div>
+          <div class="term-dot td-y"></div>
+          <div class="term-dot td-g"></div>
+          <span class="term-title">FaceTrack · Live Feed</span>
+        </div>
+        <div class="term-body">
+          <div class="face-scan-area">
+            <div class="face-ring">
+              <div class="face-ring-outer"></div>
+              <div class="face-ring-inner"></div>
+              <div class="face-emoji">🧑</div>
+            </div>
+            <div class="scan-beam"></div>
+            <span class="brk brk-tl"></span>
+            <span class="brk brk-tr"></span>
+            <span class="brk brk-bl"></span>
+            <span class="brk brk-br"></span>
+          </div>
+
+          <div class="conf-row">
+            <span class="conf-label">Confidence</span>
+            <div class="conf-bar"><div class="conf-fill"></div></div>
+            <span class="conf-val">97.4%</span>
+          </div>
+
+          <div class="log-lines">
+            <div class="log-line">
+              <span class="log-time">08:12:04</span>
+              <span class="log-type ok">[AUTH]</span>
+              <span class="log-msg">Santos, J. — CLEARED</span>
+            </div>
+            <div class="log-line">
+              <span class="log-time">08:13:29</span>
+              <span class="log-type ok">[AUTH]</span>
+              <span class="log-msg">Reyes, M. — CLEARED</span>
+            </div>
+            <div class="log-line">
+              <span class="log-time">08:15:01</span>
+              <span class="log-type err">[DENY]</span>
+              <span class="log-msg">UNKNOWN — ALERT SENT</span>
+            </div>
+            <div class="log-line">
+              <span class="log-time">08:16:44</span>
+              <span class="log-type warn">[SCAN]</span>
+              <span class="log-msg">Analyzing...<span class="log-cursor"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="clear-pill">
+        <span style="font-size:0.9rem;">✔</span>
+        <div class="threat-text">
+          <span class="clear-big">IDENTITY VERIFIED</span>
+          <span class="clear-small">Clearance Level 3 · 08:12</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THREAT STATS BAND -->
+<section id="threat-band">
+  <div class="tb-item reveal">
+    <div class="tb-num">99.97%</div>
+    <div class="tb-label">Recognition Accuracy</div>
+  </div>
+  <div class="tb-item reveal rd1">
+    <div class="tb-num">&lt;0.5s</div>
+    <div class="tb-label">Verification Speed</div>
+  </div>
+  <div class="tb-item reveal rd2">
+    <div class="tb-num">0</div>
+    <div class="tb-label">Security Breaches</div>
+  </div>
+  <div class="tb-item reveal rd3">
+    <div class="tb-num">240M+</div>
+    <div class="tb-label">Events Processed</div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="how-header">
+    <div class="sec-eye reveal">Security Protocol</div>
+    <h2 class="sec-title reveal rd1">Four-layer threat<br />identification pipeline</h2>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card reveal">
+      <div class="step-num">// STEP 01</div>
+      <div class="step-icon">📡</div>
+      <div class="step-name">Detect</div>
+      <div class="step-desc">Multi-spectrum cameras detect presence across IR, visible, and low-light bands — 24/7, all weather.</div>
+    </div>
+    <div class="step-card reveal rd1">
+      <div class="step-num">// STEP 02</div>
+      <div class="step-icon">🔬</div>
+      <div class="step-name">Analyze</div>
+      <div class="step-desc">468-point facial mesh maps biometric geometry and runs liveness detection to defeat spoofing attempts.</div>
+    </div>
+    <div class="step-card reveal rd2">
+      <div class="step-num">// STEP 03</div>
+      <div class="step-icon">🔐</div>
+      <div class="step-name">Verify</div>
+      <div class="step-desc">Cross-referenced against encrypted clearance database. Confidence threshold is configurable per zone.</div>
+    </div>
+    <div class="step-card reveal rd3">
+      <div class="step-num">// STEP 04</div>
+      <div class="step-icon">🚨</div>
+      <div class="step-name">Respond</div>
+      <div class="step-desc">Access granted or denied in milliseconds. Threat events trigger instant alerts to security command.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-grid">
+    <div class="about-content">
+      <div class="sec-eye reveal">About FaceTrack</div>
+      <h2 class="sec-title reveal rd1">Built for<br />high-stakes environments.</h2>
+      <p class="about-text reveal rd2">
+        FaceTrack was engineered for environments where <strong>a single unauthorized entry is unacceptable</strong> — data centers, government facilities, financial institutions, and critical infrastructure.
+      </p>
+      <p class="about-text reveal rd2">
+        Our biometric engine is <strong>trained on 80M+ diverse facial samples</strong> and optimized for edge deployment — no cloud dependency, no data leaving your perimeter.
+      </p>
+      <div class="about-specs reveal rd3">
+        <div class="spec-row">
+          <span class="spec-key">Processing</span>
+          <span class="spec-val hi">On-device / Edge</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">Data Residency</span>
+          <span class="spec-val ok">On-premise only</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">Encryption</span>
+          <span class="spec-val">AES-256 + TLS 1.3</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">Certifications</span>
+          <span class="spec-val">SOC 2 · ISO 27001 · GDPR</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">Anti-Spoofing</span>
+          <span class="spec-val ok">Active liveness detection</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-key">Uptime SLA</span>
+          <span class="spec-val">99.99%</span>
+        </div>
+      </div>
+      <a href="#features" class="btn-primary reveal rd4" style="display:inline-block;">View All Systems</a>
+    </div>
+
+    <div class="reveal rd1">
+      <div class="about-panel">
+        <div class="panel-bar">
+          <span class="panel-title">Security Command · Live</span>
+          <span class="panel-badge">● Monitoring</span>
+        </div>
+        <div class="panel-body">
+          <div class="incident-row">
+            <div class="inc-status ok"></div>
+            <div class="inc-info">
+              <div class="inc-name">Gate A — North Entrance</div>
+              <div class="inc-detail">Santos, J. · Clearance L3 · Verified</div>
+            </div>
+            <span class="inc-time">08:12:04</span>
+          </div>
+          <div class="incident-row">
+            <div class="inc-status ok"></div>
+            <div class="inc-info">
+              <div class="inc-name">Server Room B2</div>
+              <div class="inc-detail">Reyes, M. · Clearance L4 · Verified</div>
+            </div>
+            <span class="inc-time">08:13:29</span>
+          </div>
+          <div class="incident-row">
+            <div class="inc-status warn"></div>
+            <div class="inc-info">
+              <div class="inc-name">Gate C — East Wing</div>
+              <div class="inc-detail">Dizon, K. · Confidence 84.1% · Review</div>
+            </div>
+            <span class="inc-time">08:14:55</span>
+          </div>
+          <div class="incident-row">
+            <div class="inc-status err"></div>
+            <div class="inc-info">
+              <div class="inc-name">Perimeter Cam 07</div>
+              <div class="inc-detail">Unknown entity · Alert triggered</div>
+            </div>
+            <span class="inc-time">08:15:01</span>
+          </div>
+          <div class="incident-row">
+            <div class="inc-status ok"></div>
+            <div class="inc-info">
+              <div class="inc-name">Roof Access — Sector 3</div>
+              <div class="inc-detail">Cruz, A. · Clearance L2 · Verified</div>
+            </div>
+            <span class="inc-time">08:16:11</span>
+          </div>
+        </div>
+        <div class="panel-footer">
+          <div class="pf-stat"><div class="pf-dot" style="background:var(--success);"></div>4 cleared</div>
+          <div class="pf-stat"><div class="pf-dot" style="background:var(--warn);"></div>1 review</div>
+          <div class="pf-stat"><div class="pf-dot" style="background:var(--error);box-shadow:0 0 5px rgba(220,38,38,0.5);"></div>1 threat</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="features-header">
+    <div>
+      <div class="sec-eye reveal">Systems</div>
+      <h2 class="sec-title reveal rd1">Security arsenal</h2>
+    </div>
+    <p class="sec-body reveal" style="max-width:320px; text-align:right;">Every component hardened for hostile environments.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card reveal">
+      <span class="feat-icon">🛡</span>
+      <div class="feat-name">Anti-Spoofing Engine</div>
+      <div class="feat-desc">Detects photos, videos, 3D masks, and deepfakes in real time. Liveness score required before any clearance.</div>
+    </div>
+    <div class="feat-card reveal rd1">
+      <span class="feat-icon">🔒</span>
+      <div class="feat-name">Zero-Trust Architecture</div>
+      <div class="feat-desc">No implicit trust. Every access request is authenticated, authorized, and logged — regardless of location.</div>
+    </div>
+    <div class="feat-card reveal rd2">
+      <span class="feat-icon">🌑</span>
+      <div class="feat-name">Infrared Night Mode</div>
+      <div class="feat-desc">Full recognition capability in total darkness using active IR illumination — no blind windows, no downtime.</div>
+    </div>
+    <div class="feat-card reveal">
+      <span class="feat-icon">⚡</span>
+      <div class="feat-name">Edge Processing</div>
+      <div class="feat-desc">All computation on-device. No biometric data leaves your facility. Air-gap deployments supported.</div>
+    </div>
+    <div class="feat-card reveal rd1">
+      <span class="feat-icon">🚨</span>
+      <div class="feat-name">Instant Threat Alerts</div>
+      <div class="feat-desc">Sub-second notifications to security command via SMS, siren, door lock, or API webhook on any threat event.</div>
+    </div>
+    <div class="feat-card reveal rd2">
+      <span class="feat-icon">🗃</span>
+      <div class="feat-name">Tamper-Proof Audit Log</div>
+      <div class="feat-desc">Immutable, cryptographically signed event log — every entry, exit, and alert preserved for legal compliance.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ALERT BAND -->
+<section id="alert-band">
+  <p class="alert-quote reveal">
+    "Security isn't a feature.<br />
+    It's the <em>entire product.</em>"
+  </p>
+  <p class="alert-sub reveal rd1">FaceTrack Security Systems — Protecting perimeters since 2022</p>
+  <div class="reveal rd2" style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+    <a href="#how" class="btn-primary">Deploy FaceTrack</a>
+    <a href="#about" class="btn-ghost">Request a Demo</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="logo">
+        <div class="logo-icon">⬡</div>
+        Face<span style="color:var(--gold);">Track</span>
+      </div>
+      <p>Military-grade facial recognition security for critical environments.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Systems</h4>
+      <ul>
+        <li><a href="#">Recognition Engine</a></li>
+        <li><a href="#">Threat Response</a></li>
+        <li><a href="#">Command Dashboard</a></li>
+        <li><a href="#">API Access</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <ul>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Security Advisories</a></li>
+        <li><a href="#">Careers</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Compliance</h4>
+      <ul>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">SOC 2 Report</a></li>
+        <li><a href="#">GDPR</a></li>
+        <li><a href="#">ISO 27001</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p class="footer-copy">&copy; 2024 <span>FaceTrack</span> · All rights reserved.</p>
+    <p class="footer-copy" style="font-family:'Inter',monospace;">SYS STATUS: <span style="color:var(--success);">OPERATIONAL</span></p>
+  </div>
+</footer>
+
+<script>
+  const els = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.1 });
+  els.forEach(el => io.observe(el));
+</script>
+</body>
+</html>

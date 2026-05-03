@@ -1,0 +1,226 @@
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #ffffff;
+  /* white background */
+}
+
+.dashboard-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 260px;
+  background: rgba(10, 6, 2, 0.95);
+  /* black from reference */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(201, 168, 76, 0.2);
+  /* gold border */
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.sidebar-header {
+  padding: 1.5rem 1.25rem;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+  /* gold border */
+}
+
+.sidebar-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #E8C97A;
+  /* gold-light */
+  margin: 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 168, 76, 0.2) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.2);
+  border-radius: 10px;
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.nav-section:last-child {
+  margin-bottom: 0;
+}
+
+.nav-section-title {
+  padding: 0 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(201, 168, 76, 0.4);
+  /* gold color with transparency */
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.sidebar-footer {
+  padding: 1rem 0.75rem;
+  border-top: 1px solid rgba(201, 168, 76, 0.15);
+  /* gold border */
+  margin-top: auto;
+}
+
+.user-info {
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.user-name-sidebar {
+  color: #D9C9A8;
+  /* cream-dim */
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.logout-btn-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.logout-btn-sidebar:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  transform: translateX(4px);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  color: #D9C9A8;
+  /* cream-dim */
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.nav-item:hover {
+  background: rgba(62, 32, 8, 0.4);
+  /* brown with transparency */
+  color: #E8C97A;
+  /* gold-light */
+  transform: translateX(4px);
+}
+
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(62, 32, 8, 0.5), rgba(201, 168, 76, 0.2));
+  border-color: rgba(201, 168, 76, 0.4);
+  color: #E8C97A;
+  /* gold-light */
+  box-shadow: 0 0 15px rgba(201, 168, 76, 0.3);
+}
+
+.nav-icon {
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.nav-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-main {
+  flex: 1;
+  margin-left: 260px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 100vh;
+}
+
+.dashboard-topbar {
+  background: #3E2008;
+  /* brown from reference */
+  border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+  /* gold border */
+  padding: var(--spacing-lg) var(--spacing-xl);
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.topbar-left h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #E8C97A;
+  /* gold-light */
+  margin: 0;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: var(--spacing-xl);
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .dashboard-sidebar {
+    position: fixed;
+    left: -260px;
+    top: 0;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(0);
+    transition: left 0.3s ease;
+  }
+
+  .dashboard-main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .topbar-left h1 {
+    font-size: 1.25rem;
+  }
+}

@@ -1,0 +1,505 @@
+/* Registration Page - Aligned with Login Page Layout */
+
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0A0602 0%, #3E2008 50%, #0A0602 100%);
+  padding: var(--spacing-lg);
+}
+
+.register-container {
+  width: 100%;
+  max-width: 450px;
+}
+
+/* Make step 3 (email verification) wider */
+.register-container.step-3 {
+  max-width: 700px;
+}
+
+.back-to-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: var(--spacing-lg);
+}
+
+.back-to-login:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(-4px);
+}
+
+.register-card {
+  padding: var(--spacing-2xl);
+}
+
+.register-card h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0A0602;  /* black for better contrast */
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  margin: 0;
+  margin-bottom: var(--spacing-xl);
+}
+
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  transition: all 0.3s ease;
+}
+
+.step-dot.active {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+  box-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
+}
+
+.step-label {
+  text-align: center;
+  color: var(--primary-600);
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-xl);
+  padding: 0.5rem 1rem;
+  background: rgba(201, 168, 76, 0.1);
+  border-radius: 20px;
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.form-content {
+  margin-bottom: var(--spacing-xl);
+}
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease;
+}
+
+.password-toggle:hover {
+  color: var(--primary-600);
+}
+
+.error-message {
+  display: block;
+  color: var(--error);
+  font-size: 0.875rem;
+  margin-top: var(--spacing-sm);
+}
+
+/* Step 3 - Email Verification */
+.verification-header {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.verification-icon {
+  color: var(--primary-600);
+  margin-bottom: var(--spacing-md);
+}
+
+.verification-header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.verification-header p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.info-box {
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.info-box h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #8B6914;
+  margin-bottom: var(--spacing-sm);
+}
+
+.info-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-box li {
+  font-size: 0.875rem;
+  color: #8B6914;
+  padding: 0.25rem 0;
+}
+
+.warning-box {
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.warning-box h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #C9A84C;
+  margin-bottom: var(--spacing-sm);
+}
+
+.warning-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.warning-box li {
+  font-size: 0.875rem;
+  color: #6B3A1F;
+  padding: 0.25rem 0;
+}
+
+/* Side by side layout for info boxes */
+.info-boxes-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+@media (max-width: 768px) {
+  .info-boxes-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.verification-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: var(--spacing-md);
+}
+
+.resend-link {
+  display: block;
+  text-align: center;
+  color: var(--primary-600);
+  font-size: 0.875rem;
+  margin-top: var(--spacing-sm);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.resend-link:hover {
+  color: var(--primary-700);
+}
+
+/* Step 5 - Camera Recording */
+.camera-step {
+  text-align: center;
+}
+
+.camera-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.camera-icon {
+  color: var(--primary-600);
+  margin-bottom: var(--spacing-md);
+}
+
+.camera-header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.camera-header p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.camera-container {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto var(--spacing-lg);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 4/3;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-800);
+  color: var(--text-secondary);
+}
+
+.camera-placeholder svg {
+  margin-bottom: var(--spacing-md);
+}
+
+.countdown-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.countdown-number {
+  font-size: 6rem;
+  font-weight: 700;
+  color: white;
+  animation: pulse 1s ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.recording-indicator {
+  position: absolute;
+  top: var(--spacing-md);
+  left: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.recording-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.camera-instructions {
+  background: rgba(201, 168, 76, 0.1);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  text-align: left;
+}
+
+.camera-instructions h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #8B6914;
+  margin-bottom: var(--spacing-sm);
+}
+
+.camera-instructions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.camera-instructions li {
+  font-size: 0.875rem;
+  color: #8B6914;
+  padding: 0.25rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.camera-instructions li::before {
+  content: '•';
+  position: absolute;
+  left: 0.5rem;
+}
+
+.record-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.recording-success {
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.success-icon {
+  color: var(--success);
+  margin-bottom: var(--spacing-md);
+}
+
+.recording-success p {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--success);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.form-actions .btn {
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .register-card {
+    padding: var(--spacing-xl);
+  }
+
+  .register-card h1 {
+    font-size: 1.75rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Capture progress */
+.capture-progress {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d4af37, #f4e5c3);
+  transition: width 0.1s ease;
+}
+
+.capture-progress span {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.account-type-badge {
+  display: inline-block;
+  padding: 0.75rem 1rem;
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: var(--radius-md);
+  color: #8B6914;
+  font-weight: 600;
+  font-size: 1rem;
+  width: 100%;
+  text-align: center;
+  margin-top: 0.5rem;
+}
