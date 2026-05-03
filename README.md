@@ -1,26 +1,46 @@
-# FaceTrack: Optimized Facial Recognition Attendance System
+# FaceTrack: Facial Recognition Attendance System
 
 A high-performance, automated attendance tracking system leveraging state-of-the-art deep learning models for facial recognition. The system features a dual-camera setup for simultaneous Time-In and Time-Out logging, paired with a comprehensive React-based administrative dashboard.
 
-## 🚀 Key Features
+## Key Features
 
-*   **Dual-Camera Processing**: Runs simultaneous streams for Time-In and Time-Out processes.
-*   **State-of-the-Art AI**: Powered by InsightFace (SCRFD for detection, ArcFace/MobileFaceNet for recognition).
-*   **Temporal Identity Stabilization**: Uses a temporal voting mechanism across consecutive frames to prevent false positives and stabilize recognition.
-*   **GFPGAN Face Enhancement**: Automatically enhances blurry enrollment images to extract higher-quality embeddings.
-*   **Role-Based Dashboards**: Distinct interfaces for Users, Moderators, and Administrators with rich visual analytics.
-*   **Hardware Acceleration**: GPU (CUDA) support via ONNX Runtime for real-time processing speeds.
+- **Dual-Camera Processing**: Runs simultaneous streams for Time-In and Time-Out processes.
+- **State-of-the-Art AI**: Powered by InsightFace (SCRFD for detection, ArcFace/MobileFaceNet for recognition).
+- **Temporal Identity Stabilization**: Uses a temporal voting mechanism across consecutive frames to prevent false positives and stabilize recognition.
+- **GFPGAN Face Enhancement**: Automatically enhances blurry enrollment images to extract higher-quality embeddings.
+- **Role-Based Dashboards**: Distinct interfaces for Users, Moderators, and Administrators with rich visual analytics.
+- **Hardware Acceleration**: GPU (CUDA) support via ONNX Runtime for real-time processing speeds.
 
-## 🛠️ Technology Stack
+## Technology Stack
 
-*   **AI/Logic (Python)**: InsightFace, OpenCV, PyTorch, GFPGAN, ONNX Runtime
-*   **Backend (Node.js)**: Express.js, TypeScript, Sequelize (ORM)
-*   **Frontend (React)**: Vite, TypeScript, TailwindCSS/Custom CSS, Lucide Icons
-*   **Database**: MySQL
+### Backend (Node.js + TypeScript)
+- **Framework**: Express.js
+- **Database**: PostgreSQL with pg driver
+- **Authentication**: JWT (jsonwebtoken) + bcryptjs
+- **PDF Generation**: pdfmake
+- **Email**: nodemailer
+- **Testing**: Jest + Supertest
+
+### Frontend (React + TypeScript)
+- **Build Tool**: Vite
+- **UI Framework**: React 18
+- **Routing**: React Router v6
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **HTTP Client**: Axios
+- **Styling**: Custom CSS
+
+### AI/Recognition Logic (Python)
+- **Core Recognition**: InsightFace (SCRFD detection, ArcFace/MobileFaceNet recognition)
+- **Image Processing**: OpenCV, Pillow, scikit-image
+- **Deep Learning**: PyTorch, ONNX Runtime (GPU support)
+- **Face Enhancement**: GFPGAN, Real-ESRGAN, BasicSR
+- **Database**: PostgreSQL (psycopg2-binary)
+- **Utilities**: NumPy, SciPy, scikit-learn
 
 ---
 
-## 📊 Data Flow Diagram
+## Data Flow Diagram
 
 The following diagram illustrates how data moves through the system, from camera capture to database logging and frontend visualization.
 
@@ -42,10 +62,10 @@ flowchart TD
         Det --> Rec[InsightFace MBF Recognizer]
         Enh --> Rec
         Rec --> Vote[Temporal Voter]
-        Vote --> Logger[MySQL Database Logger]
+        Vote --> Logger[PostgreSQL Database Logger]
     end
     
-    subgraph Database [Storage - MySQL]
+    subgraph Database [Storage - PostgreSQL]
         DB[(Attendance, Users, & Groups)]
     end
     
@@ -56,7 +76,7 @@ flowchart TD
 
 ---
 
-## 👤 Use Case Diagram
+## Use Case Diagram
 
 This diagram outlines the system's capabilities based on user roles (Student/Employee, Moderator, Administrator).
 
@@ -91,7 +111,7 @@ flowchart LR
 
 ---
 
-## 📈 Model Benchmark
+## Model Benchmark
 
 The system recently underwent a major architectural transition from legacy models (YuNet + SFace) to **InsightFace (buffalo_sc)**. Below is a comparative benchmark based on system audits and testing.
 
@@ -107,18 +127,27 @@ The system recently underwent a major architectural transition from legacy model
 
 ---
 
-## ⚙️ Setup & Installation
+## Setup & Installation
+
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.9+
+- PostgreSQL 12+
+- (Optional) CUDA-capable GPU for hardware acceleration
 
 ### 1. Database Setup
-1. Install MySQL Server.
+1. Install PostgreSQL Server.
 2. Create a database named `facial_recognition`.
-3. Import the base schema (if provided) or allow Sequelize to auto-sync.
+3. Update the `.env` files in both Backend and Logic folders with your database credentials.
 
 ### 2. Backend (Node.js)
 ```bash
 cd Facial_Recognition_Backend
 npm install
-# Configure your .env file with DB credentials
+
+# Create .env file based on .env.example
+# Configure your database credentials and JWT secret
+
 npm run dev
 ```
 
@@ -126,6 +155,10 @@ npm run dev
 ```bash
 cd Facial_Recognition_Frontend
 npm install
+
+# Create .env file based on .env.example
+# Configure your API endpoint
+
 npm run dev
 ```
 
@@ -136,13 +169,85 @@ npm run dev
 cd Facial_Recognition_Logic
 pip install -r requirements.txt
 ```
-3. Run the AI engine:
+3. Create `.env` file based on `.env.example` and configure database credentials.
+4. Run the AI engine:
 ```bash
 python main.py
 ```
-*(Note: On the first run, the system will download the GFPGAN model (~348MB) and rebuild the optimized face encoding cache.)*
 
-## 📁 Directory Structure
-*   `/Facial_Recognition_Backend` - Node.js API, Models, and Controllers.
-*   `/Facial_Recognition_Frontend` - Vite/React web application.
-*   `/Facial_Recognition_Logic` - Python dual-camera scripts, InsightFace integration, and cache.
+**Note:** Large model files (`.pth` files) are not included in the repository due to GitHub's file size limits. On the first run, the system will download the GFPGAN model (~348MB) and rebuild the optimized face encoding cache.
+
+---
+
+## Directory Structure
+
+```
+FacialRecognitionCapstone/
+├── Facial_Recognition_Backend/    # Node.js API, Controllers, Models, Services
+│   ├── src/
+│   │   ├── controllers/           # Request handlers
+│   │   ├── models/                # Database models
+│   │   ├── services/              # Business logic
+│   │   ├── routes/                # API routes
+│   │   ├── middleware/            # Auth & validation
+│   │   └── migrations/            # Database migrations
+│   └── package.json
+│
+├── Facial_Recognition_Frontend/   # React web application
+│   ├── src/
+│   │   ├── components/            # Reusable UI components
+│   │   ├── pages/                 # Page components (admin, user, moderator)
+│   │   ├── services/              # API service layer
+│   │   ├── contexts/              # React contexts (Auth)
+│   │   └── types/                 # TypeScript type definitions
+│   └── package.json
+│
+└── Facial_Recognition_Logic/      # Python facial recognition engine
+    ├── main.py                    # Main entry point
+    ├── face_recognizer_v2.py      # Recognition logic
+    ├── database_logger.py         # Database integration
+    ├── known_faces/               # Enrolled face images
+    ├── models/                    # AI model files (not in repo)
+    └── requirements.txt
+```
+
+---
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/forgot-password` - Password reset request
+
+### Users
+- `GET /api/users` - Get all college users
+- `GET /api/shs-users` - Get all SHS users
+- `GET /api/faculty-users` - Get all faculty users
+- `POST /api/users` - Create new user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Archive user
+
+### Attendance
+- `GET /api/attendance` - Get attendance logs
+- `GET /api/attendance/overview` - Get attendance statistics
+- `POST /api/attendance/report` - Generate PDF report
+
+### Metadata
+- `GET /api/metadata/courses` - Get all courses
+- `GET /api/metadata/strands` - Get all strands
+- `GET /api/metadata/departments` - Get all departments
+- `GET /api/metadata/years` - Get all year levels
+- `GET /api/metadata/grades` - Get all grade levels
+
+---
+
+## License
+
+This project is proprietary software developed for educational purposes.
+
+---
+
+## Contributors
+
+Developed as a capstone project for facial recognition-based attendance tracking.
