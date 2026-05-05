@@ -8,7 +8,7 @@ export const getUserNotifications = async (req: Request, res: Response) => {
     const requestingUser = (req as any).user;
     const limit = parseInt(req.query.limit as string) || 50;
 
-    const notifications = await NotificationModel.getUserNotifications(requestingUser.id, limit);
+    const notifications = await NotificationModel.getUserNotifications(requestingUser.userId, limit);
     return sendResponse(res, { status: 200, message: 'Notifications fetched successfully' }, notifications);
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -25,7 +25,7 @@ export const markAsRead = async (req: Request, res: Response) => {
       return sendResponse(res, API_MESSAGES.GENERAL.BAD_REQUEST);
     }
 
-    await NotificationModel.markAsRead(notificationId, requestingUser.id);
+    await NotificationModel.markAsRead(notificationId, requestingUser.userId);
     return sendResponse(res, { status: 200, message: 'Notification marked as read' });
   } catch (error) {
     console.error('Error marking notification as read:', error);
@@ -37,7 +37,7 @@ export const markAllAsRead = async (req: Request, res: Response) => {
   try {
     const requestingUser = (req as any).user;
 
-    await NotificationModel.markAllAsRead(requestingUser.id);
+    await NotificationModel.markAllAsRead(requestingUser.userId);
     return sendResponse(res, { status: 200, message: 'All notifications marked as read' });
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
@@ -54,7 +54,7 @@ export const deleteNotification = async (req: Request, res: Response) => {
       return sendResponse(res, API_MESSAGES.GENERAL.BAD_REQUEST);
     }
 
-    await NotificationModel.delete(notificationId, requestingUser.id);
+    await NotificationModel.delete(notificationId, requestingUser.userId);
     return sendResponse(res, { status: 200, message: 'Notification deleted' });
   } catch (error) {
     console.error('Error deleting notification:', error);
@@ -66,7 +66,7 @@ export const getUnreadCount = async (req: Request, res: Response) => {
   try {
     const requestingUser = (req as any).user;
 
-    const count = await NotificationModel.getUnreadCount(requestingUser.id);
+    const count = await NotificationModel.getUnreadCount(requestingUser.userId);
     return sendResponse(res, { status: 200, message: 'Unread count fetched' }, { count });
   } catch (error) {
     console.error('Error fetching unread count:', error);

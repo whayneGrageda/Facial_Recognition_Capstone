@@ -229,9 +229,8 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.message === 'EMAIL_NOT_FOUND') {
       return sendResponse(res, {
-        success: false,
-        message: 'Email not found',
-        statusCode: 404
+        status: 404,
+        message: 'Email not found'
       });
     }
     if (error.message === 'FAILED_TO_SEND_EMAIL') {
@@ -254,9 +253,8 @@ export const verifyPasswordResetCode = async (req: Request, res: Response) => {
     
     if (!result.valid) {
       return sendResponse(res, {
-        success: false,
-        message: 'Invalid or expired reset code',
-        statusCode: 400
+        status: 400,
+        message: 'Invalid or expired reset code'
       });
     }
 
@@ -277,9 +275,8 @@ export const updatePassword = async (req: Request, res: Response) => {
 
     if (newPassword.length < 8) {
       return sendResponse(res, {
-        success: false,
-        message: 'Password must be at least 8 characters',
-        statusCode: 400
+        status: 400,
+        message: 'Password must be at least 8 characters'
       });
     }
 
@@ -288,23 +285,20 @@ export const updatePassword = async (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.message === 'INVALID_CODE') {
       return sendResponse(res, {
-        success: false,
-        message: 'Invalid reset code',
-        statusCode: 400
+        status: 400,
+        message: 'Invalid reset code'
       });
     }
     if (error.message === 'CODE_EXPIRED') {
       return sendResponse(res, {
-        success: false,
-        message: 'Reset code has expired',
-        statusCode: 400
+        status: 400,
+        message: 'Reset code has expired'
       });
     }
     if (error.message === 'USER_NOT_FOUND') {
       return sendResponse(res, {
-        success: false,
-        message: 'User not found',
-        statusCode: 404
+        status: 404,
+        message: 'User not found'
       });
     }
     console.error('Update password error:', error);

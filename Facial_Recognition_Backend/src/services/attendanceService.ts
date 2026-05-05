@@ -1,10 +1,25 @@
 import { AttendanceModel } from '../models/attendanceModel.js';
 import { CreateAttendanceRequest } from '../types/attendanceEntity.js';
+import { NotificationService } from './notificationService.js';
 import pdfmake from 'pdfmake';
 
 export const AttendanceService = {
   recordAttendance: async (data: CreateAttendanceRequest) => {
-    return await AttendanceModel.create(data);
+    const attendance = await AttendanceModel.create(data);
+    
+    // Create notification for the user
+    try {
+      await NotificationService.notifyAttendanceRecorded(
+        data.user_id,
+        data.user_type,
+        data.attendance_type
+      );
+    } catch (notifError) {
+      console.error('Failed to create notification:', notifError);
+      // Don't fail the attendance recording if notification fails
+    }
+    
+    return attendance;
   },
 
   getAttendance: async (limit: number, offset: number, filters?: any) => {

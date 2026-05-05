@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, GraduationCap, TrendingUp, CheckCircle, Calendar, RefreshCw, BarChart3, Clock, PieChart as PieChartIcon, Award } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
 import { attendanceService } from '../../services/attendanceService';
 import { userService } from '../../services/userService';
 import '../admin/AttendanceOverview.css';
@@ -352,7 +352,7 @@ const AttendanceOverview = () => {
                     stroke="none"
                     cornerRadius={4}
                   >
-                    {weeklyData.map((entry, index) => (
+                    {weeklyData.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={`url(#pieGradMod-${index})`} style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }} />
                     ))}
                   </Pie>

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { AuthModel } from '../models/authModel.js';
 import { LoginRequest, LoginResponse } from '../types/authEntity.js';
+import { NotificationService } from './notificationService.js';
 
 // In-memory store for verification codes (in production, use Redis or database)
 const verificationCodes = new Map<string, { code: string; expiresAt: Date; attempts: number }>();
@@ -92,12 +93,6 @@ export const AuthService = {
         email: user.email || '',
         role: role,
         userType: actualUserType,
-        student_id: user.student_id,
-        course_name: user.course_name,
-        year_name: user.year_name,
-        strand_name: user.strand_name,
-        grade_name: user.grade_name,
-        department_name: user.department_name,
       },
     };
   },
@@ -155,6 +150,14 @@ export const AuthService = {
       role: 'student'
     });
 
+    // Send welcome notification
+    try {
+      const fullName = `${userData.first_name} ${userData.last_name}`;
+      await NotificationService.notifyRegistrationSuccess(newUser.id, 'college', fullName);
+    } catch (notifError) {
+      console.error('Failed to send registration notification:', notifError);
+    }
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = newUser;
 
@@ -198,6 +201,14 @@ export const AuthService = {
       role: 'student'
     });
 
+    // Send welcome notification
+    try {
+      const fullName = `${userData.first_name} ${userData.last_name}`;
+      await NotificationService.notifyRegistrationSuccess(newUser.id, 'shs', fullName);
+    } catch (notifError) {
+      console.error('Failed to send registration notification:', notifError);
+    }
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = newUser;
 
@@ -223,14 +234,7 @@ export const AuthService = {
       throw new Error('EMAIL_EXISTS');
     }
 
-    // Check if employee ID already exists (if provided)
-    if (userData.employee_id) {
-      const { FacultyUserModel } = await import('../models/facultyUserModel.js');
-      const existingEmployeeId = await FacultyUserModel.findByEmployeeId(userData.employee_id);
-      if (existingEmployeeId) {
-        throw new Error('EMPLOYEE_ID_EXISTS');
-      }
-    }
+    // Note: employee_id is not stored in faculty_users table, it's just accepted for compatibility
 
     // Hash password
     const hashedPassword = await bcrypt.hash(userData.password, 10);
@@ -242,6 +246,14 @@ export const AuthService = {
       password: hashedPassword,
       role: 'faculty'
     });
+
+    // Send welcome notification
+    try {
+      const fullName = `${userData.first_name} ${userData.last_name}`;
+      await NotificationService.notifyRegistrationSuccess(newUser.id, 'faculty', fullName);
+    } catch (notifError) {
+      console.error('Failed to send registration notification:', notifError);
+    }
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = newUser;
@@ -583,6 +595,24 @@ This is an automated message. Please do not reply to this email.`,
 
     // Remove the reset code
     verificationCodes.delete(`reset_${email}`);
+
+    // Send password reset confirmation notification
+    try {
+      // Find user to get their ID and user type
+      const collegeUser = await AuthModel.findUserByEmail(email, 'college');
+      const shsUser = await AuthModel.findUserByEmail(email, 'shs');
+      const facultyUser = await AuthModel.findUserByEmail(email, 'faculty');
+      
+      if (collegeUser) {
+        await NotificationService.notifyPasswordReset(collegeUser.id, 'college');
+      } else if (shsUser) {
+        await NotificationService.notifyPasswordReset(shsUser.id, 'shs');
+      } else if (facultyUser) {
+        await NotificationService.notifyPasswordReset(facultyUser.id, 'faculty');
+      }
+    } catch (notifError) {
+      console.error('Failed to send password reset notification:', notifError);
+    }
 
     console.log(`✅ Password updated successfully for ${email}`);
     return {

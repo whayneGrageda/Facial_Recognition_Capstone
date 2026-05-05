@@ -3,7 +3,7 @@
 Drop-in replacement for face_recognizer.py.
 Uses InsightFace's buffalo_sc model pack for both detection and recognition.
 Includes temporal voting for identity stabilization, GPU acceleration,
-and GFPGAN face enhancement for blurry enrollment images.
+GFPGAN face enhancement for blurry enrollment images, and FAISS index for fast similarity search.
 """
 
 import os
@@ -15,6 +15,14 @@ from typing import List, Tuple, Optional
 from collections import Counter, deque
 from insightface.app import FaceAnalysis
 
+# FAISS for fast similarity search
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except ImportError:
+    FAISS_AVAILABLE = False
+    print("[v2] WARNING: FAISS not installed. Install with: pip install faiss-cpu")
+
 # GFPGAN is optional -- graceful fallback if not installed
 try:
     from gfpgan import GFPGANer
@@ -24,26 +32,44 @@ except ImportError:
 
 
 class TemporalVoter:
-    """Stabilizes identity across consecutive frames using majority voting."""
+    """Stabilizes identity across consecutive frames using confidence-weighted voting."""
 
-    def __init__(self, window: int = 7, confirm_threshold: int = 4):
-        self.tracks = {}  # spatial_key -> deque of (name, confidence)
+    def __init__(self, window: int = 10, confirm_threshold: int = 6):
+        self.tracks = {}  # spatial_key -> deque of (name, confidence, timestamp)
         self.window = window
         self.threshold = confirm_threshold
         self._cleanup_counter = 0
 
     def vote(self, bbox: Tuple[int, int, int, int], name: str, confidence: float):
-        """Vote on identity for a face at a given location. O(1) per call."""
+        """Vote on identity for a face at a given location using confidence-weighted voting."""
         key = self._spatial_key(bbox)
         if key not in self.tracks:
             self.tracks[key] = deque(maxlen=self.window)
         self.tracks[key].append((name, confidence, time.time()))
 
-        names_list = [n for n, c, t in self.tracks[key]]
-        top_name, count = Counter(names_list).most_common(1)[0]
+        # Confidence-weighted voting: sum confidence scores per name
+        name_scores = {}
+        for n, c, t in self.tracks[key]:
+            if n not in name_scores:
+                name_scores[n] = {'total_confidence': 0.0, 'count': 0}
+            name_scores[n]['total_confidence'] += c
+            name_scores[n]['count'] += 1
 
-        if count >= self.threshold:
-            avg_conf = np.mean([c for n, c, t in self.tracks[key] if n == top_name])
+        # Find name with highest total confidence
+        if not name_scores:
+            return name, confidence, "PENDING"
+        
+        top_name = max(name_scores.items(), key=lambda x: x[1]['total_confidence'])[0]
+        top_count = name_scores[top_name]['count']
+        avg_conf = name_scores[top_name]['total_confidence'] / top_count
+
+        # Confirm if count meets threshold
+        if top_count >= self.threshold:
+            # Periodic cleanup of stale tracks
+            self._cleanup_counter += 1
+            if self._cleanup_counter % 50 == 0:
+                self._cleanup_stale()
+            
             return top_name, float(avg_conf), "CONFIRMED"
 
         # Periodic cleanup of stale tracks
@@ -86,7 +112,12 @@ class FaceRecognizer:
         self.known_encodings_numpy = None
 
         # Temporal voting for identity stabilization
+        # Reduced window for faster confirmation while maintaining accuracy
         self.voter = TemporalVoter(window=7, confirm_threshold=4)
+
+        # FAISS index for fast similarity search
+        self.faiss_index = None
+        self.use_faiss = FAISS_AVAILABLE
 
         # Pick the model variant from config, default to buffalo_sc (fastest)
         model_name = getattr(config, 'INSIGHTFACE_MODEL', 'buffalo_sc')
@@ -125,6 +156,7 @@ class FaceRecognizer:
 
         # Blur threshold -- images below this Laplacian variance get enhanced
         # Set to 0 to disable enhancement (fast rebuild). Set to 80+ to enable.
+        # GFPGAN uses significant memory, disable for production use
         self.blur_threshold = getattr(config, 'BLUR_THRESHOLD', 0)
 
         # Initialize GFPGAN face enhancer (enrollment only)
@@ -298,11 +330,42 @@ class FaceRecognizer:
         """Build stacked numpy array for vectorized cosine matching."""
         if not self.known_face_encodings:
             self.known_encodings_numpy = None
+            self.faiss_index = None
             return
         self.known_encodings_numpy = np.vstack([
             np.asarray(enc, dtype=np.float32)
             for enc in self.known_face_encodings
         ])
+        
+        # Build FAISS index for fast similarity search
+        if self.use_faiss:
+            self._build_faiss_index()
+
+    def _build_faiss_index(self):
+        """Build FAISS index from known encodings for fast similarity search.
+        
+        Uses IndexFlatIP (Inner Product) since embeddings are L2-normalized,
+        making inner product equivalent to cosine similarity.
+        """
+        if not FAISS_AVAILABLE or self.known_encodings_numpy is None:
+            self.faiss_index = None
+            return
+        
+        try:
+            # Get embedding dimension
+            d = self.known_encodings_numpy.shape[1]
+            
+            # Create FAISS index for inner product (cosine similarity for normalized vectors)
+            self.faiss_index = faiss.IndexFlatIP(d)
+            
+            # Add all known encodings to the index
+            self.faiss_index.add(self.known_encodings_numpy)
+            
+            print(f"[v2] FAISS index built with {self.faiss_index.ntotal} encodings (dimension: {d})")
+        except Exception as e:
+            print(f"[v2] FAISS index build failed: {e}. Falling back to numpy search.")
+            self.faiss_index = None
+            self.use_faiss = False
 
     # ---- Cache ----
 
@@ -422,11 +485,33 @@ class FaceRecognizer:
         return locations, names, confidences
 
     def _match_face(self, feature: np.ndarray) -> Tuple[str, float]:
-        """Match a face embedding against known faces using cosine similarity."""
+        """Match a face embedding against known faces using cosine similarity.
+        
+        Uses FAISS index if available for fast search, otherwise falls back to numpy.
+        """
         if self.known_encodings_numpy is None or len(self.known_encodings_numpy) == 0:
             return "Unknown", 0.0
 
-        # Vectorized cosine similarity (embeddings are already L2-normalized)
+        # Use FAISS for fast search if available
+        if self.use_faiss and self.faiss_index is not None:
+            try:
+                # FAISS search (k=1 for top match)
+                feature_2d = feature.reshape(1, -1).astype(np.float32)
+                similarities, indices = self.faiss_index.search(feature_2d, k=1)
+                
+                best_idx = int(indices[0, 0])
+                best_score = float(similarities[0, 0])
+                
+                # Check thresholds
+                if best_score >= self.similarity_threshold and best_score >= self.min_confidence:
+                    return self.known_face_names[best_idx], best_score
+                
+                return "Unknown", best_score
+            except Exception as e:
+                print(f"[v2] FAISS search failed: {e}. Falling back to numpy.")
+                self.use_faiss = False
+
+        # Fallback: Vectorized cosine similarity (embeddings are already L2-normalized)
         feature = feature.reshape(1, -1)
         similarities = feature @ self.known_encodings_numpy.T
 
@@ -446,6 +531,7 @@ class FaceRecognizer:
         self.known_face_names = []
         self.known_face_encodings = []
         self.known_encodings_numpy = None
+        self.faiss_index = None
 
         if os.path.exists(self.cache_file):
             try:

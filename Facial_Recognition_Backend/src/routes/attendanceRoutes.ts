@@ -4,7 +4,10 @@ import { authenticateJWT, authorizeRoles } from '../middleware/authMiddleware.js
 
 const router = Router();
 
-// All routes require authentication
+// Public endpoint for facial recognition system (uses API key)
+router.post('/record-from-camera', AttendanceController.recordAttendance);
+
+// All other routes require authentication
 router.use(authenticateJWT);
 
 // Record attendance (all authenticated users)

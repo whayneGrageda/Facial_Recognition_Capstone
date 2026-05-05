@@ -196,23 +196,36 @@ class CameraSystem:
                 except Empty:
                     pass
             try:
-                # Use a smaller copy for faster inter-process communication if downscaling is intended
-                # recognizer handles its own downscaling, but passing smaller images is even faster.
-                # For now, pass original to keep it simple, downscaling happens in worker.
-                self.frame_queue.put_nowait(frame.copy())
+                # Resize frame to reduce memory usage in inter-process communication
+                # Recognition worker will use this smaller frame
+                small_frame = cv2.resize(frame, (480, 360))
+                self.frame_queue.put_nowait(small_frame)
             except:
                 pass
         
         # Draw results (Temporal Persistence)
+        # Scale coordinates from recognition resolution (480x360) to display resolution
         now = time.time()
         if now - self.tracked_results.get('timestamp', 0) < 2.0:
             locations = self.tracked_results['locations']
             names = self.tracked_results['names']
             confidences = self.tracked_results['confidences']
             
+            # Calculate scale factors
+            display_h, display_w = frame.shape[:2]
+            recognition_w, recognition_h = 480, 360
+            scale_x = display_w / recognition_w
+            scale_y = display_h / recognition_h
+            
             for i, (top, right, bottom, left) in enumerate(locations):
                 name = names[i]
                 confidence = confidences[i]
+                
+                # Scale coordinates to display resolution
+                scaled_top = int(top * scale_y)
+                scaled_right = int(right * scale_x)
+                scaled_bottom = int(bottom * scale_y)
+                scaled_left = int(left * scale_x)
                 
                 # Choose color based on name and camera type
                 if name != "Unknown":
@@ -220,7 +233,7 @@ class CameraSystem:
                 else:
                     color = (0, 0, 255)
                 
-                self._draw_pretty_box(frame, (left, top, right, bottom), name, confidence, color)
+                self._draw_pretty_box(frame, (scaled_left, scaled_top, scaled_right, scaled_bottom), name, confidence, color)
         
         # Add System HUD
         self._draw_status_hud(frame)
@@ -228,20 +241,25 @@ class CameraSystem:
         return frame
     
     def _draw_pretty_box(self, img, bbox, name, confidence, color):
-        """Draw a clean, simple face box"""
+        """Draw a clean, simple face box with name only"""
         left, top, right, bottom = bbox
         
         # 1. Draw main box (clean 2px thickness)
         cv2.rectangle(img, (left, top), (right, bottom), color, 2)
         
-        # 2. Draw simple label background (no copies/overlays)
-        label = f"{name} ({confidence:.0%})"
+        # 2. Draw name label without background (just text)
+        label = name
         font = cv2.FONT_HERSHEY_SIMPLEX
         
-        # Draw label just above or below the box
-        (l_w, l_h), _ = cv2.getTextSize(label, font, 0.5, 1)
-        cv2.rectangle(img, (left, top - 20), (left + l_w + 10, top), color, cv2.FILLED)
-        cv2.putText(img, label, (left + 5, top - 5), font, 0.5, (255, 255, 255), 1)
+        # Draw text with black outline for visibility
+        (l_w, l_h), _ = cv2.getTextSize(label, font, 0.6, 2)
+        text_x = left + 5
+        text_y = top - 10 if top > 30 else bottom + 20
+        
+        # Black outline for contrast
+        cv2.putText(img, label, (text_x, text_y), font, 0.6, (0, 0, 0), 3)
+        # Colored text on top
+        cv2.putText(img, label, (text_x, text_y), font, 0.6, color, 2)
 
     def _draw_status_hud(self, frame):
         """Draw minimal status info"""

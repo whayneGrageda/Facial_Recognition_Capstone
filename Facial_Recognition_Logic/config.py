@@ -46,6 +46,10 @@ class Config:
     DB_USER = os.getenv('DB_USER', 'postgres')
     DB_PASSWORD = os.getenv('DB_PASSWORD', '')
     
+    # Backend API settings (for notifications)
+    API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:3002/api')
+    USE_API_FOR_ATTENDANCE = os.getenv('USE_API_FOR_ATTENDANCE', 'True').lower() == 'true'
+    
     def __init__(self):
         """Initialize and validate configuration"""
         self._validate()

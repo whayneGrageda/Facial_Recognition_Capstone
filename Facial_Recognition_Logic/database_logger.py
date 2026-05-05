@@ -2,17 +2,22 @@
 
 import psycopg2
 from psycopg2 import pool
+import requests
 from datetime import datetime
 from typing import Optional
 
 class DatabaseLogger:
-    """Logs attendance records to PostgreSQL database"""
+    """Logs attendance records to PostgreSQL database via Backend API"""
     
     def __init__(self, config):
-        """Initialize database connection"""
+        """Initialize database connection and API settings"""
         self.config = config
         self.connection_pool = None
         self._initialize_pool()
+        
+        # Backend API configuration
+        self.api_base_url = getattr(config, 'API_BASE_URL', 'http://localhost:3002/api')
+        self.use_api = getattr(config, 'USE_API_FOR_ATTENDANCE', True)  # Toggle to use API or direct DB
     
     def _initialize_pool(self):
         """Initialize connection pool"""
@@ -42,6 +47,63 @@ class DatabaseLogger:
         Returns:
             True if logged successfully, False otherwise
         """
+        # Try API first if enabled
+        if self.use_api:
+            success = self._log_via_api(user_identifier, confidence, attendance_type)
+            if success:
+                return True
+            print("WARNING: API logging failed, falling back to direct database")
+        
+        # Fallback to direct database insertion
+        return self._log_via_database(user_identifier, confidence, attendance_type)
+    
+    def _log_via_api(self, user_identifier: str, confidence: float, attendance_type: str) -> bool:
+        """Log attendance via Backend API (creates notifications automatically)"""
+        if self.connection_pool is None:
+            return False
+        
+        conn = None
+        try:
+            # First, find the user to get their ID and type
+            conn = self.connection_pool.getconn()
+            cursor = conn.cursor()
+            user_info = self._find_user(cursor, user_identifier)
+            
+            if user_info is None:
+                print(f"WARNING: User not found in database: {user_identifier}")
+                return False
+            
+            user_id, user_type, full_name = user_info
+            
+            # Call backend API (using public endpoint for camera system)
+            url = f"{self.api_base_url}/attendance/record-from-camera"
+            payload = {
+                'user_id': user_id,
+                'user_type': user_type,
+                'name': full_name,
+                'attendance_type': attendance_type
+            }
+            
+            response = requests.post(url, json=payload, timeout=5)
+            
+            if response.status_code == 200 or response.status_code == 201:
+                return True
+            else:
+                print(f"API Error: {response.status_code} - {response.text}")
+                return False
+                
+        except requests.exceptions.RequestException as e:
+            print(f"API Request failed: {e}")
+            return False
+        except Exception as e:
+            print(f"ERROR in API logging: {e}")
+            return False
+        finally:
+            if conn:
+                self.connection_pool.putconn(conn)
+    
+    def _log_via_database(self, user_identifier: str, confidence: float, attendance_type: str) -> bool:
+        """Direct database insertion (fallback, does NOT create notifications)"""
         if self.connection_pool is None:
             print("ERROR: Database not connected")
             return False
