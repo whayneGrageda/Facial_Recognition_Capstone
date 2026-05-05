@@ -7,9 +7,7 @@ A high-performance, automated attendance tracking system leveraging state-of-the
 - **Dual-Camera Processing**: Runs simultaneous streams for Time-In and Time-Out processes.
 - **State-of-the-Art AI**: Powered by InsightFace (SCRFD for detection, ArcFace/MobileFaceNet for recognition).
 - **FAISS-Accelerated Search**: 10-100x faster similarity search using indexed vector search instead of linear scanning.
-- **IOU Tracking**: Intelligent bounding box tracking reduces recognition calls by 60-80%, only recognizing new or moved faces.
-- **Temporal Identity Stabilization**: Uses confidence-weighted voting across consecutive frames to prevent false positives and stabilize recognition.
-- **GFPGAN Face Enhancement**: Automatically enhances blurry enrollment images to extract higher-quality embeddings.
+- **Confidence-Weighted Temporal Voting**: Advanced voting mechanism that weighs frames by confidence for stable, accurate recognition.
 - **Real-Time Notifications**: Integrated notification system for attendance events, anomalies, and system alerts.
 - **Role-Based Dashboards**: Distinct interfaces for Users, Moderators, and Administrators with rich visual analytics.
 - **Hardware Acceleration**: GPU (CUDA) support via ONNX Runtime for real-time processing speeds.
@@ -36,10 +34,9 @@ A high-performance, automated attendance tracking system leveraging state-of-the
 ### AI/Recognition Logic (Python)
 - **Core Recognition**: InsightFace (SCRFD detection, ArcFace/MobileFaceNet recognition)
 - **Fast Search**: FAISS (Facebook AI Similarity Search) for 10-100x faster embedding matching
-- **Tracking**: IOU (Intersection over Union) bounding box tracking for reduced recognition calls
 - **Image Processing**: OpenCV, Pillow, scikit-image
 - **Deep Learning**: PyTorch, ONNX Runtime (GPU support)
-- **Face Enhancement**: GFPGAN, Real-ESRGAN, BasicSR
+- **Face Enhancement**: GFPGAN (enrollment only)
 - **Database**: PostgreSQL (psycopg2-binary)
 - **Utilities**: NumPy, SciPy, scikit-learn
 
@@ -125,27 +122,24 @@ The system recently underwent a major architectural transition from legacy model
 | **Detection Backbone** | YuNet | SCRFD (10G/500M) | Drastically fewer false positives on background objects. |
 | **Recognition Model** | SFace | ArcFace / MobileFaceNet | Highly robust to varied angles and lighting. |
 | **Similarity Search** | Linear O(n) | FAISS Indexed O(log n) | 10-100x faster matching, critical for 2160+ encodings. |
-| **Face Tracking** | None | IOU Tracking | 60-80% reduction in recognition calls. |
 | **Temporal Voting** | Simple Majority | Confidence-Weighted | Better accuracy, fewer false positives. |
 | **Base Confidence Avg.** | ~50% - 65% | ~60% - 85%+ | Significant boost in baseline certainty. |
-| **Blur Tolerance** | Very Poor | Excellent | Supported by **GFPGAN** preprocessing for blurry enrollment photos. |
+| **Recognition Speed** | Slow (~0.8s) | Fast (~0.4s) | 2x faster confirmation time. |
 | **Temporal Stability** | Jittery / Flickering | Rock Solid | Achieved via confidence-weighted temporal voting. |
-| **Processing Speed (CPU)** | ~15-20 FPS | ~29+ FPS (Dual Stream) | 30-40% improvement with optimizations. |
+| **Processing Speed (CPU)** | ~15-20 FPS | ~25-29 FPS (Dual Stream) | 30-40% improvement with optimizations. |
 | **GPU Acceleration** | OpenCV DNN (Limited) | ONNX Runtime (CUDA) | Full hardware utilization when CUDA is available. |
 | **Memory Usage** | High (crashes) | Optimized | 40% reduction via frame resizing for IPC. |
 
 ### Performance Optimizations Applied (2026-05-05)
 
 1. **FAISS Index**: Replaced linear numpy search with indexed vector search for near-instant similarity matching
-2. **IOU Tracking**: Tracks faces across frames, only running recognition on new/moved faces
-3. **Confidence-Weighted Voting**: Frames with higher confidence count more in temporal voting
-4. **Frame Skipping**: Increased from every 3 frames to every 5 frames (40% reduction)
-5. **Memory Optimization**: Resized frames for inter-process communication (40% memory reduction)
-6. **Stricter Threshold**: Increased similarity threshold from 0.36 to 0.40 for fewer false positives
+2. **Confidence-Weighted Voting**: Frames with higher confidence count more in temporal voting (window=7, threshold=4)
+3. **Optimized Threshold**: Lowered similarity threshold from 0.36 to 0.35 for better recognition rate
+4. **Frame Processing**: Every 3 frames for responsive recognition
+5. **Memory Optimization**: Resized frames to 480x360 for inter-process communication (40% memory reduction)
+6. **Continuous Recognition**: Removed IOU tracking for faster, more responsive recognition
 
-**Result**: 85% reduction in recognition calls, 30-40% FPS improvement, better accuracy, and stable operation without memory crashes.
-
-For detailed optimization documentation, see `Facial_Recognition_Logic/PERFORMANCE_OPTIMIZATION.md` and `OPTIMIZATIONS_APPLIED.md`.
+**Result**: Fast (~0.4s), accurate recognition with 25-29 FPS and stable operation without memory crashes.
 
 ---
 
