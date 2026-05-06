@@ -43,6 +43,8 @@ class Config:
     ENABLE_LIVENESS = os.getenv('ENABLE_LIVENESS', 'True').lower() == 'true'
     LIVENESS_THRESHOLD = float(os.getenv('LIVENESS_THRESHOLD', '0.7'))
 
+    # AI Reasoning Agent
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
     # Database settings
     DB_HOST = os.getenv('DB_HOST', 'localhost')

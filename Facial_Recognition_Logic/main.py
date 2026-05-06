@@ -16,6 +16,11 @@ from face_recognizer_v2 import FaceRecognizer
 from database_logger import DatabaseLogger
 from config import Config
 
+try:
+    from ai_agent import SecurityAnalystAgent
+except ImportError:
+    SecurityAnalystAgent = None
+
 # Global list to track all camera systems for coordinated shutdown
 _global_systems = []
 
@@ -94,10 +99,11 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
 class CameraSystem:
     """Individual camera system using multiprocessing for recognition"""
     
-    def __init__(self, camera_index, attendance_type, config):
+    def __init__(self, camera_index, attendance_type, config, ai_agent=None):
         self.camera_index = camera_index
         self.attendance_type = attendance_type
         self.config = config
+        self.ai_agent = ai_agent
         self.window_name = f"{attendance_type.upper()} Camera"
         
         # Communication
@@ -187,6 +193,11 @@ class CameraSystem:
             while True:
                 new_results = self.results_queue.get_nowait()
                 self.tracked_results = new_results
+                
+                # Check for SPOOF to trigger AI agent
+                if "SPOOF" in new_results['names']:
+                    if hasattr(self, 'ai_agent') and self.ai_agent and getattr(self.ai_agent, 'enabled', False):
+                        self.ai_agent.analyze_threat(frame, "SPOOF", {"attendance_type": self.attendance_type})
         except Empty:
             pass
         
@@ -305,19 +316,24 @@ def main():
     print("\nPress 'q' in any window to quit")
     print("-" * 60)
     
+    # Initialize AI Agent
+    ai_agent = None
+    if SecurityAnalystAgent is not None:
+        ai_agent = SecurityAnalystAgent(config.GEMINI_API_KEY)
+    
     systems = []
     
     try:
         # Initialize TIME-IN camera
         print(f"\nInitializing TIME-IN camera (index: {config.TIMEIN_CAMERA_INDEX})...")
-        timein_system = CameraSystem(config.TIMEIN_CAMERA_INDEX, 'time-in', config)
+        timein_system = CameraSystem(config.TIMEIN_CAMERA_INDEX, 'time-in', config, ai_agent=ai_agent)
         systems.append(timein_system)
         print(f"✓ TIME-IN camera initialized")
         
         # Initialize TIME-OUT camera
         print(f"\nInitializing TIME-OUT camera (index: {config.TIMEOUT_CAMERA_INDEX})...")
         try:
-            timeout_system = CameraSystem(config.TIMEOUT_CAMERA_INDEX, 'time-out', config)
+            timeout_system = CameraSystem(config.TIMEOUT_CAMERA_INDEX, 'time-out', config, ai_agent=ai_agent)
             systems.append(timeout_system)
             print(f"✓ TIME-OUT camera initialized")
         except RuntimeError as e:
