@@ -15,7 +15,12 @@ from typing import List, Tuple, Optional
 from collections import Counter, deque
 from insightface.app import FaceAnalysis
 
-# FAISS for fast similarity search
+try:
+    from liveness_detector import LivenessDetector
+    LIVENESS_IMPORTED = True
+except ImportError:
+    LIVENESS_IMPORTED = False
+    print("[v2] WARNING: liveness_detector.py not found. Liveness disabled.")
 try:
     import faiss
     FAISS_AVAILABLE = True
@@ -32,30 +37,72 @@ except ImportError:
 
 
 class TemporalVoter:
-    """Stabilizes identity across consecutive frames using confidence-weighted voting."""
+    """Stabilizes identity across consecutive frames using confidence-weighted voting with IoU matching."""
 
-    def __init__(self, window: int = 10, confirm_threshold: int = 6):
-        self.tracks = {}  # spatial_key -> deque of (name, confidence, timestamp)
+    def __init__(self, window: int = 10, confirm_threshold: int = 6, iou_threshold: float = 0.3):
+        # tracks: list of dicts: {'bbox': bbox, 'history': deque()}
+        self.tracks = []
         self.window = window
         self.threshold = confirm_threshold
+        self.iou_threshold = iou_threshold
         self._cleanup_counter = 0
 
-    def vote(self, bbox: Tuple[int, int, int, int], name: str, confidence: float):
-        """Vote on identity for a face at a given location using confidence-weighted voting."""
-        key = self._spatial_key(bbox)
-        if key not in self.tracks:
-            self.tracks[key] = deque(maxlen=self.window)
-        self.tracks[key].append((name, confidence, time.time()))
+    def _compute_iou(self, boxA, boxB):
+        # top, right, bottom, left
+        yA = max(boxA[0], boxB[0])
+        xA = max(boxA[3], boxB[3])
+        yB = min(boxA[2], boxB[2])
+        xB = min(boxA[1], boxB[1])
 
-        # Confidence-weighted voting: sum confidence scores per name
+        interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
+        if interArea == 0:
+            return 0.0
+
+        boxAArea = (boxA[2] - boxA[0] + 1) * (boxA[1] - boxA[3] + 1)
+        boxBArea = (boxB[2] - boxB[0] + 1) * (boxB[1] - boxB[3] + 1)
+        
+        iou = interArea / float(boxAArea + boxBArea - interArea)
+        return iou
+
+    def vote(self, bbox: Tuple[int, int, int, int], name: str, confidence: float):
+        """Vote on identity for a face at a given location using IoU matching."""
+        now = time.time()
+        
+        # Periodic cleanup
+        self._cleanup_counter += 1
+        if self._cleanup_counter % 50 == 0:
+            self._cleanup_stale()
+
+        # Find best matching track via IoU
+        best_iou = 0.0
+        best_track_idx = -1
+        
+        for i, track in enumerate(self.tracks):
+            iou = self._compute_iou(bbox, track['bbox'])
+            if iou > best_iou:
+                best_iou = iou
+                best_track_idx = i
+
+        if best_iou > self.iou_threshold and best_track_idx != -1:
+            # Update existing track
+            self.tracks[best_track_idx]['bbox'] = bbox
+            self.tracks[best_track_idx]['history'].append((name, confidence, now))
+            track_history = self.tracks[best_track_idx]['history']
+        else:
+            # Create new track
+            history = deque(maxlen=self.window)
+            history.append((name, confidence, now))
+            self.tracks.append({'bbox': bbox, 'history': history})
+            track_history = history
+
+        # Confidence-weighted voting
         name_scores = {}
-        for n, c, t in self.tracks[key]:
+        for n, c, t in track_history:
             if n not in name_scores:
                 name_scores[n] = {'total_confidence': 0.0, 'count': 0}
             name_scores[n]['total_confidence'] += c
             name_scores[n]['count'] += 1
 
-        # Find name with highest total confidence
         if not name_scores:
             return name, confidence, "PENDING"
         
@@ -63,38 +110,15 @@ class TemporalVoter:
         top_count = name_scores[top_name]['count']
         avg_conf = name_scores[top_name]['total_confidence'] / top_count
 
-        # Confirm if count meets threshold
         if top_count >= self.threshold:
-            # Periodic cleanup of stale tracks
-            self._cleanup_counter += 1
-            if self._cleanup_counter % 50 == 0:
-                self._cleanup_stale()
-            
             return top_name, float(avg_conf), "CONFIRMED"
 
-        # Periodic cleanup of stale tracks
-        self._cleanup_counter += 1
-        if self._cleanup_counter % 50 == 0:
-            self._cleanup_stale()
-
         return name, confidence, "PENDING"
-
-    def _spatial_key(self, bbox: Tuple[int, int, int, int], grid: int = 80):
-        """Bin face center into grid cells for spatial tracking."""
-        top, right, bottom, left = bbox
-        cx = (left + right) // 2
-        cy = (top + bottom) // 2
-        return (cx // grid, cy // grid)
 
     def _cleanup_stale(self, max_age: float = 5.0):
         """Remove tracks that haven't been updated recently."""
         now = time.time()
-        stale_keys = []
-        for key, history in self.tracks.items():
-            if history and (now - history[-1][2]) > max_age:
-                stale_keys.append(key)
-        for key in stale_keys:
-            del self.tracks[key]
+        self.tracks = [t for t in self.tracks if t['history'] and (now - t['history'][-1][2]) <= max_age]
 
 
 class FaceRecognizer:
@@ -145,6 +169,14 @@ class FaceRecognizer:
         self.similarity_threshold = getattr(config, 'SIMILARITY_THRESHOLD', 0.36)
         self.min_confidence = getattr(config, 'MIN_CONFIDENCE', 0.45)
         self.max_faces = getattr(config, 'MAX_FACES_PER_FRAME', 4)
+
+        # Liveness Detection
+        self.enable_liveness = getattr(config, 'ENABLE_LIVENESS', False) and LIVENESS_IMPORTED
+        self.liveness_detector = None
+        if self.enable_liveness:
+            liveness_thresh = getattr(config, 'LIVENESS_THRESHOLD', 0.7)
+            model_path = getattr(config, 'MODEL_PATH', 'models')
+            self.liveness_detector = LivenessDetector(model_dir=model_path, threshold=liveness_thresh)
 
         # Cache file path
         cache_dir = getattr(config, 'MODEL_PATH', 'models')
@@ -468,9 +500,21 @@ class FaceRecognizer:
 
             # Match against known faces
             name, confidence = self._match_face(feature)
+            
+            # Apply liveness detection if enabled
+            bbox = (top, right, bottom, left)
+            is_live = True
+            
+            # Only run liveness if the person is recognized or if we want to run it on everyone.
+            # Running it only on recognized faces saves compute.
+            if self.enable_liveness and name != "Unknown":
+                # We need the original unresized frame here. wait, `frame` is passed to recognize_faces.
+                is_live, liveness_score = self.liveness_detector.is_live(frame, bbox)
+                if not is_live:
+                    name = "SPOOF"
+                    confidence = 1.0 - liveness_score
 
             # Apply temporal voting for stability
-            bbox = (top, right, bottom, left)
             voted_name, voted_conf, status = self.voter.vote(bbox, name, confidence)
 
             # Use voted result if confirmed, otherwise use raw result

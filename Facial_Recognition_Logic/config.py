@@ -23,7 +23,7 @@ class Config:
     # Recognition parameters
     SIMILARITY_THRESHOLD = float(os.getenv('SIMILARITY_THRESHOLD', '0.36'))  # Lower threshold for better recognition
     MAX_FACES_PER_FRAME = int(os.getenv('MAX_FACES_PER_FRAME', '4'))
-    PROCESS_EVERY_N_FRAMES = int(os.getenv('PROCESS_EVERY_N_FRAMES', '3'))
+    PROCESS_EVERY_N_FRAMES = int(os.getenv('PROCESS_EVERY_N_FRAMES', '1'))
     RECOGNITION_COOLDOWN = int(os.getenv('RECOGNITION_COOLDOWN', '300'))  # 5 minutes
     
     # Performance & Stability settings
@@ -38,6 +38,11 @@ class Config:
     DET_SIZE_H = int(os.getenv('DET_SIZE_H', '640'))  # Detection input height
     DET_THRESHOLD = float(os.getenv('DET_THRESHOLD', '0.5'))  # Face detection confidence threshold
     MIN_CONFIDENCE = float(os.getenv('MIN_CONFIDENCE', '0.45'))  # Minimum similarity to accept a match
+    
+    # Liveness Detection (Anti-Spoofing)
+    ENABLE_LIVENESS = os.getenv('ENABLE_LIVENESS', 'True').lower() == 'true'
+    LIVENESS_THRESHOLD = float(os.getenv('LIVENESS_THRESHOLD', '0.7'))
+
     
     # Database settings
     DB_HOST = os.getenv('DB_HOST', 'localhost')

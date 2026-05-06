@@ -59,7 +59,7 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                 # Log attendance
                 current_time = datetime.now()
                 for i, name in enumerate(names):
-                    if name != "Unknown":
+                    if name != "Unknown" and name != "SPOOF":
                         key = f"{name}_{attendance_type}"
                         last_time = last_recognition_time.get(key)
                         
@@ -68,6 +68,9 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                             if success:
                                 print(f"[OK] {attendance_type.upper()}: {name} (confidence: {confidences[i]:.2%})")
                                 last_recognition_time[key] = current_time
+                    elif name == "SPOOF":
+                        # Optional: Log the spoofing attempt to the console or database
+                        print(f"[WARNING] {attendance_type.upper()}: Spoof attempt detected! (confidence: {confidences[i]:.2%})")
                 
                 # Send results back to main process
                 if not results_queue.full():
@@ -228,7 +231,9 @@ class CameraSystem:
                 scaled_left = int(left * scale_x)
                 
                 # Choose color based on name and camera type
-                if name != "Unknown":
+                if name == "SPOOF":
+                    color = (0, 0, 255)  # Red for spoof
+                elif name != "Unknown":
                     color = (0, 255, 0) if self.attendance_type == 'time-in' else (255, 165, 0)
                 else:
                     color = (0, 0, 255)
