@@ -1,14 +1,17 @@
 # Facial Recognition Logic - Standalone Python Application
 
-This is a standalone Python application for facial recognition attendance tracking using OpenCV and YuNet + SFace models.
+This is a standalone Python application for facial recognition attendance tracking using highly optimized multiprocessing, InsightFace (SCRFD + ArcFace) models, and FAISS indexing.
 
 ## Features
 
-- Dual camera support for TIME-IN and TIME-OUT tracking
-- Real-time face recognition using YuNet (detection) + SFace (recognition)
-- Automatic attendance logging to PostgreSQL database
-- 5-minute cooldown to prevent duplicate logs
-- Hot-reload of known faces without restarting
+- **Dual Camera Support:** Handles TIME-IN and TIME-OUT physical cameras concurrently.
+- **High-Performance Architecture:** Uses Python `multiprocessing` to bypass the GIL, decoupling rendering from inference.
+- **Advanced Face Recognition:** Uses InsightFace (buffalo_sc pack) with ONNX Runtime GPU acceleration (if available).
+- **Silent Face Anti-Spoofing (Liveness):** Integrated MiniFASNetV2 to detect and block screen/photo spoofing attempts.
+- **GFPGAN Image Enhancement:** Automatically upscales blurry enrollment images for high-quality baseline encodings.
+- **Temporal Voting (IoU):** Stabilizes identity across frames using IoU tracking to prevent flickering and spoof bleed-over.
+- **FAISS Indexing:** Fast vector similarity search for large-scale databases.
+- **Automatic Logging:** Logs directly to PostgreSQL with configurable cooldowns (e.g., 5 mins).
 
 ## Setup
 
@@ -28,11 +31,9 @@ DB_USER=postgres
 DB_PASSWORD=your_password
 ```
 
-3. Download OpenCV models (if not already present):
-   - `face_detection_yunet_2023mar.onnx`
-   - `face_recognition_sface_2021dec.onnx`
-   
-   Place them in the `models/` directory.
+3. Download Models:
+   - The system uses InsightFace (`buffalo_sc` default). It will attempt to download automatically.
+   - `MiniFASNetV2.onnx` (Liveness) and `GFPGANv1.4.pth` (Enhancement) will be downloaded automatically to the `models/` folder on first run if missing.
 
 ## Usage
 
@@ -73,17 +74,19 @@ python main.py
 
 ```
 Facial_Recognition_Logic/
-├── main.py                 # Main application with dual camera support
-├── face_recognizer.py      # Face recognition logic (YuNet + SFace)
+├── main.py                 # Main application with multiprocessing dual camera support
+├── face_recognizer_v2.py   # Advanced face recognition logic (InsightFace, GFPGAN, FAISS)
+├── liveness_detector.py    # Silent Face Anti-Spoofing logic (MiniFASNetV2)
 ├── database_logger.py      # PostgreSQL attendance logger
 ├── config.py              # Configuration management
 ├── requirements.txt       # Python dependencies
 ├── setup.bat             # Setup script
 ├── .env                  # Environment variables (not in git)
 ├── .env.example          # Example environment variables
-├── models/               # OpenCV model files
-│   ├── face_detection_yunet_2023mar.onnx
-│   └── face_recognition_sface_2021dec.onnx
+├── models/               # Auto-downloaded model files
+│   ├── buffalo_sc/
+│   ├── MiniFASNetV2.onnx
+│   └── GFPGANv1.4.pth
 └── known_faces/          # Face images for recognition
     ├── {userId}/
     │   ├── frame_001.jpg
