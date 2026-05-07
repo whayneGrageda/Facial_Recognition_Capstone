@@ -194,7 +194,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-**Note:** Large model files (`.pth` files) are not included in the repository due to GitHub's file size limits. On the first run, the system will download the GFPGAN model (~348MB) and rebuild the optimized face encoding cache with FAISS index.
+**Note:** Large model files (`.pth` files) are not included in the repository due to GitHub's file size limits. On the first run, the system will automatically download the necessary core models and rebuild the optimized face encoding cache with FAISS index.
 
 ---
 
