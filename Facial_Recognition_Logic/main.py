@@ -15,6 +15,7 @@ from datetime import datetime
 from face_recognizer_v2 import FaceRecognizer
 from database_logger import DatabaseLogger
 from config import Config
+import numpy as np
 
 try:
     from ai_agent import SecurityAnalystAgent
@@ -42,6 +43,7 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
         recognizer = FaceRecognizer(config)
         db_logger = DatabaseLogger(config)
         last_recognition_time = {}
+        dwell_trackers = {} # Tracks {key: {'first_seen': datetime, 'last_seen': datetime}}
         
         print(f"[{attendance_type.upper()}] Recognition worker started")
         
@@ -51,7 +53,13 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                 frame = None
                 try:
                     # Queue.get() blocks, which is what we want
-                    frame = frame_queue.get(timeout=0.1)
+                    encoded_data = frame_queue.get(timeout=0.1)
+                    if isinstance(encoded_data, bytes):
+                        # Decode JPEG back into raw BGR frame
+                        nparr = np.frombuffer(encoded_data, np.uint8)
+                        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    else:
+                        frame = encoded_data
                 except Empty:
                     continue
                 
@@ -63,16 +71,35 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                 
                 # Log attendance
                 current_time = datetime.now()
+                
+                # Clean up old dwell trackers (people who left the frame for > 1 second)
+                keys_to_remove = []
+                for k, v in dwell_trackers.items():
+                    if (current_time - v['last_seen']).total_seconds() > 1.0:
+                        keys_to_remove.append(k)
+                for k in keys_to_remove:
+                    del dwell_trackers[k]
+
                 for i, name in enumerate(names):
                     if name != "Unknown" and name != "SPOOF":
                         key = f"{name}_{attendance_type}"
                         last_time = last_recognition_time.get(key)
                         
-                        if last_time is None or (current_time - last_time).seconds > config.RECOGNITION_COOLDOWN:
-                            success = db_logger.log_attendance(name, confidences[i], attendance_type)
-                            if success:
-                                print(f"[OK] {attendance_type.upper()}: {name} (confidence: {confidences[i]:.2%})")
-                                last_recognition_time[key] = current_time
+                        if last_time is None or (current_time - last_time).total_seconds() > config.RECOGNITION_COOLDOWN:
+                            # Check dwell time
+                            if key not in dwell_trackers:
+                                dwell_trackers[key] = {'first_seen': current_time, 'last_seen': current_time}
+                            else:
+                                dwell_trackers[key]['last_seen'] = current_time
+                                
+                            dwell_duration = (current_time - dwell_trackers[key]['first_seen']).total_seconds()
+                            
+                            if dwell_duration >= getattr(config, 'DWELL_TIME_SECONDS', 1.5):
+                                success = db_logger.log_attendance(name, confidences[i], attendance_type)
+                                if success:
+                                    print(f"[OK] {attendance_type.upper()}: {name} (confidence: {confidences[i]:.2%}) - Dwelled {dwell_duration:.1f}s")
+                                    last_recognition_time[key] = current_time
+                                    del dwell_trackers[key]
                     elif name == "SPOOF":
                         # Optional: Log the spoofing attempt to the console or database
                         print(f"[WARNING] {attendance_type.upper()}: Spoof attempt detected! (confidence: {confidences[i]:.2%})")
@@ -210,10 +237,9 @@ class CameraSystem:
                 except Empty:
                     pass
             try:
-                # Resize frame to reduce memory usage in inter-process communication
-                # Recognition worker will use this smaller frame
-                small_frame = cv2.resize(frame, (480, 360))
-                self.frame_queue.put_nowait(small_frame)
+                # JPEG compress to bypass IPC memory bandwidth bottleneck, keeping full resolution
+                _, encoded_img = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                self.frame_queue.put_nowait(encoded_img.tobytes())
             except:
                 pass
         
@@ -227,7 +253,7 @@ class CameraSystem:
             
             # Calculate scale factors
             display_h, display_w = frame.shape[:2]
-            recognition_w, recognition_h = 480, 360
+            recognition_w, recognition_h = display_w, display_h  # Now matches the display resolution since we sent the full frame
             scale_x = display_w / recognition_w
             scale_y = display_h / recognition_h
             

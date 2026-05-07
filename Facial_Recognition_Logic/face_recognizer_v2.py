@@ -28,12 +28,7 @@ except ImportError:
     FAISS_AVAILABLE = False
     print("[v2] WARNING: FAISS not installed. Install with: pip install faiss-cpu")
 
-# GFPGAN is optional -- graceful fallback if not installed
-try:
-    from gfpgan import GFPGANer
-    GFPGAN_AVAILABLE = True
-except ImportError:
-    GFPGAN_AVAILABLE = False
+
 
 
 class TemporalVoter:
@@ -181,18 +176,12 @@ class FaceRecognizer:
         # Cache file path
         cache_dir = getattr(config, 'MODEL_PATH', 'models')
         self.cache_file = os.path.join(cache_dir, 'face_encodings_cache_v2.pkl')
-        self.cache_version = 'insightface_v2_gfpgan'
+        self.cache_version = 'insightface_v2'
 
         # Frame counter for tiered detection
         self._frame_counter = 0
 
-        # Blur threshold -- images below this Laplacian variance get enhanced
-        # Set to 0 to disable enhancement (fast rebuild). Set to 80+ to enable.
-        # GFPGAN uses significant memory, disable for production use
-        self.blur_threshold = getattr(config, 'BLUR_THRESHOLD', 0)
 
-        # Initialize GFPGAN face enhancer (enrollment only)
-        self.enhancer = self._init_gfpgan()
 
         # Load known faces
         self.load_known_faces()
@@ -210,75 +199,7 @@ class FaceRecognizer:
         print("[v2] Using CPU execution")
         return ['CPUExecutionProvider']
 
-    # ---- GFPGAN Face Enhancement ----
 
-    def _init_gfpgan(self):
-        """Initialize the GFPGAN face enhancer for enrollment preprocessing."""
-        if not GFPGAN_AVAILABLE:
-            print("[v2] GFPGAN not installed -- enrollment enhancement disabled")
-            return None
-
-        try:
-            model_path = os.path.join(
-                getattr(self.config, 'MODEL_PATH', 'models'),
-                'GFPGANv1.4.pth'
-            )
-
-            # Download model if not present
-            if not os.path.exists(model_path):
-                print("[v2] Downloading GFPGAN model (348MB, one-time)...")
-                import urllib.request
-                os.makedirs(os.path.dirname(model_path) or '.', exist_ok=True)
-                url = 'https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth'
-                urllib.request.urlretrieve(url, model_path)
-                print("[v2] GFPGAN model downloaded successfully")
-
-            enhancer = GFPGANer(
-                model_path=model_path,
-                upscale=2,
-                arch='clean',
-                channel_multiplier=2,
-                bg_upsampler=None,  # Skip background upsampling for speed
-            )
-            print("[v2] GFPGAN face enhancer loaded (enrollment enhancement enabled)")
-            return enhancer
-
-        except Exception as e:
-            print(f"[v2] GFPGAN init failed: {e} -- enhancement disabled")
-            return None
-
-    def _compute_blur_score(self, image: np.ndarray) -> float:
-        """Compute blur score using Laplacian variance. Higher = sharper."""
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
-        return cv2.Laplacian(gray, cv2.CV_64F).var()
-
-    def _enhance_face_image(self, image: np.ndarray) -> np.ndarray:
-        """Enhance a blurry face image using GFPGAN.
-
-        Only enhances if the image is below the blur threshold.
-        Returns the original image if enhancement is unavailable or unnecessary.
-        """
-        if self.enhancer is None:
-            return image
-
-        blur_score = self._compute_blur_score(image)
-
-        if blur_score >= self.blur_threshold:
-            return image  # Already sharp enough
-
-        try:
-            _, _, enhanced = self.enhancer.enhance(
-                image,
-                has_aligned=False,
-                only_center_face=True,
-                paste_back=True,
-            )
-            if enhanced is not None:
-                return enhanced
-        except Exception:
-            pass  # Silently fall back to original
-
-        return image
 
     # ---- Known face loading ----
 
@@ -307,13 +228,8 @@ class FaceRecognizer:
         print(f"[v2] Loaded {len(self.known_face_names)} encodings for {unique_people} people")
 
     def _load_person_images(self, person_dir: str, person_name: str):
-        """Load and encode all images for one person.
-
-        If GFPGAN is available, blurry images are enhanced before
-        embedding extraction for better recognition accuracy.
-        """
+        """Load and encode all images for one person."""
         count = 0
-        enhanced_count = 0
         for filename in sorted(os.listdir(person_dir)):
             if not filename.lower().endswith(('.jpg', '.jpeg', '.png')):
                 continue
@@ -324,21 +240,10 @@ class FaceRecognizer:
                 if img is None:
                     continue
 
-                # Enhance blurry enrollment images before extraction
-                original_blur = self._compute_blur_score(img)
-                processed_img = self._enhance_face_image(img)
-                was_enhanced = processed_img is not img
-                if was_enhanced:
-                    enhanced_count += 1
-
                 # InsightFace detects + extracts embeddings in one call
-                faces = self.app.get(processed_img)
+                faces = self.app.get(img)
                 if not faces:
-                    # Fallback: try original image if enhancement broke detection
-                    if was_enhanced:
-                        faces = self.app.get(img)
-                    if not faces:
-                        continue
+                    continue
 
                 # Use the largest face (most prominent)
                 face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
@@ -355,8 +260,7 @@ class FaceRecognizer:
                 print(f"[v2] Error loading {filepath}: {e}")
 
         if count > 0:
-            suffix = f" ({enhanced_count} enhanced)" if enhanced_count > 0 else ""
-            print(f"  Loaded {count} images for {person_name}{suffix}")
+            print(f"  Loaded {count} images for {person_name}")
 
     def _rebuild_numpy_encodings(self):
         """Build stacked numpy array for vectorized cosine matching."""
@@ -505,14 +409,20 @@ class FaceRecognizer:
             bbox = (top, right, bottom, left)
             is_live = True
             
-            # Only run liveness if the person is recognized or if we want to run it on everyone.
-            # Running it only on recognized faces saves compute.
             if self.enable_liveness and name != "Unknown":
-                # We need the original unresized frame here. wait, `frame` is passed to recognize_faces.
-                is_live, liveness_score = self.liveness_detector.is_live(frame, bbox)
-                if not is_live:
-                    name = "SPOOF"
-                    confidence = 1.0 - liveness_score
+                # Check face size to avoid falsely spoofing distant small faces
+                face_w = right - left
+                face_h = bottom - top
+                
+                if face_w < 60 or face_h < 60:
+                    # Too small/far to reliably verify liveness. 
+                    # Force them to step closer by falling back to Unknown.
+                    name = "Unknown"
+                else:
+                    is_live, liveness_score = self.liveness_detector.is_live(frame, bbox)
+                    if not is_live:
+                        name = "SPOOF"
+                        confidence = 1.0 - liveness_score
 
             # Apply temporal voting for stability
             voted_name, voted_conf, status = self.voter.vote(bbox, name, confidence)

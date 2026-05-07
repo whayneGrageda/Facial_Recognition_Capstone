@@ -23,8 +23,9 @@ class Config:
     # Recognition parameters
     SIMILARITY_THRESHOLD = float(os.getenv('SIMILARITY_THRESHOLD', '0.36'))  # Lower threshold for better recognition
     MAX_FACES_PER_FRAME = int(os.getenv('MAX_FACES_PER_FRAME', '4'))
-    PROCESS_EVERY_N_FRAMES = int(os.getenv('PROCESS_EVERY_N_FRAMES', '1'))
+    PROCESS_EVERY_N_FRAMES = int(os.getenv('PROCESS_EVERY_N_FRAMES', '3'))  # Uncap display FPS by running AI on fewer frames
     RECOGNITION_COOLDOWN = int(os.getenv('RECOGNITION_COOLDOWN', '300'))  # 5 minutes
+    DWELL_TIME_SECONDS = float(os.getenv('DWELL_TIME_SECONDS', '1.5'))  # Seconds a person must stay in frame before time-in
     
     # Performance & Stability settings
     RECOGNITION_SCALE = float(os.getenv('RECOGNITION_SCALE', '0.5'))  # Downscale for detection
