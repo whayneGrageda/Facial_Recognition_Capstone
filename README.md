@@ -8,6 +8,8 @@ A high-performance, automated attendance tracking system leveraging state-of-the
 - **State-of-the-Art AI**: Powered by InsightFace (SCRFD for detection, ArcFace/MobileFaceNet for recognition).
 - **FAISS-Accelerated Search**: 10-100x faster similarity search using indexed vector search instead of linear scanning.
 - **Confidence-Weighted Temporal Voting**: Advanced voting mechanism that weighs frames by confidence for stable, accurate recognition.
+- **Distance-Based Anti-Spoofing**: Dynamic face size thresholds (60x60 min) inherently reject distant spoof attempts while ensuring high-quality face captures.
+- **State-Based Attendance Validation**: Enforces strict Time-In/Time-Out loops, actively preventing redundant attendance logs.
 - **Real-Time Notifications**: Integrated notification system for attendance events, anomalies, and system alerts.
 - **Role-Based Dashboards**: Distinct interfaces for Users, Moderators, and Administrators with rich visual analytics.
 - **Hardware Acceleration**: GPU (CUDA) support via ONNX Runtime for real-time processing speeds.
@@ -36,7 +38,6 @@ A high-performance, automated attendance tracking system leveraging state-of-the
 - **Fast Search**: FAISS (Facebook AI Similarity Search) for 10-100x faster embedding matching
 - **Image Processing**: OpenCV, Pillow, scikit-image
 - **Deep Learning**: PyTorch, ONNX Runtime (GPU support)
-- **Face Enhancement**: GFPGAN (enrollment only)
 - **Database**: PostgreSQL (psycopg2-binary)
 - **Utilities**: NumPy, SciPy, scikit-learn
 
@@ -60,9 +61,7 @@ flowchart TD
     subgraph AI_Engine [Recognition Logic - Python]
         Cam1[Time-In Camera] --> Det[InsightFace SCRFD Detector]
         Cam2[Time-Out Camera] --> Det
-        Det --> Enh[GFPGAN Enhancer<br/>*Enrollment Only*]
         Det --> Rec[InsightFace MBF Recognizer]
-        Enh --> Rec
         Rec --> Vote[Temporal Voter]
         Vote --> Logger[PostgreSQL Database Logger]
     end
@@ -130,16 +129,18 @@ The system recently underwent a major architectural transition from legacy model
 | **GPU Acceleration** | OpenCV DNN (Limited) | ONNX Runtime (CUDA) | Full hardware utilization when CUDA is available. |
 | **Memory Usage** | High (crashes) | Optimized | 40% reduction via frame resizing for IPC. |
 
-### Performance Optimizations Applied (2026-05-05)
+### Performance Optimizations Applied (May 2026)
 
-1. **FAISS Index**: Replaced linear numpy search with indexed vector search for near-instant similarity matching
-2. **Confidence-Weighted Voting**: Frames with higher confidence count more in temporal voting (window=7, threshold=4)
-3. **Optimized Threshold**: Lowered similarity threshold from 0.36 to 0.35 for better recognition rate
-4. **Frame Processing**: Every 3 frames for responsive recognition
-5. **Memory Optimization**: Resized frames to 480x360 for inter-process communication (40% memory reduction)
-6. **Continuous Recognition**: Removed IOU tracking for faster, more responsive recognition
+1. **FAISS Index**: Replaced linear numpy search with indexed vector search for near-instant similarity matching.
+2. **Confidence-Weighted Voting**: Frames with higher confidence count more in temporal voting (window=7, threshold=4).
+3. **Zero-Latency IPC**: Migrated to in-memory JPEG encoding for cross-process frame transmission, allowing high-resolution frame processing without memory bottlenecks.
+4. **Memory Stabilization**: Removed memory-heavy GFPGAN module, completely resolving "bad allocation" Out-Of-Memory (OOM) crashes during multi-camera processing.
+5. **Frame Processing**: Processes every 3 frames to drastically reduce CPU load while maintaining 30 FPS display smoothness.
+6. **Temporal Dwell Validation**: Enforced a 1.5-second dwell time requirement before logging attendance to prevent "fly-by" false positives.
+7. **Distance-Based Anti-Spoofing**: Enforced a minimum face size threshold (60x60 pixels), implicitly requiring users to step closer and rejecting small, distant spoof attempts.
+8. **State-Based Attendance Validation**: Database logger checks daily records to block redundant duplicate Time-In/Time-Out entries.
 
-**Result**: Fast (~0.4s), accurate recognition with 25-29 FPS and stable operation without memory crashes.
+**Result**: Fast (~0.4s), highly accurate recognition with 25-29 FPS and rock-solid stability without memory crashes.
 
 ---
 
