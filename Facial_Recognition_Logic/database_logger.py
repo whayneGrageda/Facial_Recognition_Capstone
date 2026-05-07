@@ -35,7 +35,45 @@ class DatabaseLogger:
             print(f"✗ Database connection failed: {e}")
             self.connection_pool = None
     
-    def log_attendance(self, user_identifier: str, confidence: float, attendance_type: str = 'time-in') -> bool:
+    def get_last_attendance_status(self, user_identifier: str) -> Optional[str]:
+        """
+        Get the most recent attendance status for the user today.
+        """
+        if self.connection_pool is None:
+            return None
+            
+        conn = None
+        try:
+            conn = self.connection_pool.getconn()
+            cursor = conn.cursor()
+            
+            user_info = self._find_user(cursor, user_identifier)
+            if user_info is None:
+                return None
+                
+            user_id, user_type, _ = user_info
+            
+            cursor.execute("""
+                SELECT attendance_type 
+                FROM attendance 
+                WHERE user_id = %s AND user_type = %s AND DATE(timestamp) = CURRENT_DATE
+                ORDER BY timestamp DESC
+                LIMIT 1
+            """, (user_id, user_type))
+            
+            result = cursor.fetchone()
+            if result:
+                return result[0]
+            return None
+            
+        except Exception as e:
+            print(f"ERROR getting last attendance status: {e}")
+            return None
+        finally:
+            if conn:
+                self.connection_pool.putconn(conn)
+
+    def log_attendance(self, user_identifier: str, confidence: float, attendance_type: str = 'time-in') -> tuple[bool, str]:
         """
         Log attendance for a recognized user
         
@@ -45,17 +83,27 @@ class DatabaseLogger:
             attendance_type: 'time-in' or 'time-out'
             
         Returns:
-            True if logged successfully, False otherwise
+            (success_bool, status_message)
         """
+        # Validate state logic (prevent double time-in or double time-out)
+        last_status = self.get_last_attendance_status(user_identifier)
+        
+        if last_status == attendance_type:
+            # User is already in the requested state today
+            return False, f"ALREADY_{attendance_type.upper()}"
+            
         # Try API first if enabled
         if self.use_api:
             success = self._log_via_api(user_identifier, confidence, attendance_type)
             if success:
-                return True
+                return True, "LOGGED_API"
             print("WARNING: API logging failed, falling back to direct database")
         
         # Fallback to direct database insertion
-        return self._log_via_database(user_identifier, confidence, attendance_type)
+        success = self._log_via_database(user_identifier, confidence, attendance_type)
+        if success:
+            return True, "LOGGED_DB"
+        return False, "ERROR"
     
     def _log_via_api(self, user_identifier: str, confidence: float, attendance_type: str) -> bool:
         """Log attendance via Backend API (creates notifications automatically)"""

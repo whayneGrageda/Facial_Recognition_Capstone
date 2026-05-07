@@ -95,11 +95,18 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                             dwell_duration = (current_time - dwell_trackers[key]['first_seen']).total_seconds()
                             
                             if dwell_duration >= getattr(config, 'DWELL_TIME_SECONDS', 1.5):
-                                success = db_logger.log_attendance(name, confidences[i], attendance_type)
+                                success, reason = db_logger.log_attendance(name, confidences[i], attendance_type)
                                 if success:
                                     print(f"[OK] {attendance_type.upper()}: {name} (confidence: {confidences[i]:.2%}) - Dwelled {dwell_duration:.1f}s")
                                     last_recognition_time[key] = current_time
                                     del dwell_trackers[key]
+                                else:
+                                    if reason.startswith("ALREADY_"):
+                                        print(f"[INFO] Ignored {attendance_type.upper()}: {name} is already {attendance_type}ed today.")
+                                        last_recognition_time[key] = current_time
+                                        del dwell_trackers[key]
+                                    else:
+                                        print(f"[ERROR] Failed to log {attendance_type.upper()} for {name}: {reason}")
                     elif name == "SPOOF":
                         # Optional: Log the spoofing attempt to the console or database
                         print(f"[WARNING] {attendance_type.upper()}: Spoof attempt detected! (confidence: {confidences[i]:.2%})")
