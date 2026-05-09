@@ -57,6 +57,7 @@ class Config:
     # Backend API settings (for notifications)
     API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:3002/api')
     USE_API_FOR_ATTENDANCE = os.getenv('USE_API_FOR_ATTENDANCE', 'True').lower() == 'true'
+    CAMERA_API_KEY = os.getenv('CAMERA_API_KEY', '')
     
     def __init__(self):
         """Initialize and validate configuration"""

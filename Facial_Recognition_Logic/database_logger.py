@@ -123,7 +123,7 @@ class DatabaseLogger:
             
             user_id, user_type, full_name = user_info
             
-            # Call backend API (using public endpoint for camera system)
+            # Call backend API (requires camera API key for authentication)
             url = f"{self.api_base_url}/attendance/record-from-camera"
             payload = {
                 'user_id': user_id,
@@ -131,8 +131,12 @@ class DatabaseLogger:
                 'name': full_name,
                 'attendance_type': attendance_type
             }
+            headers = {
+                'Content-Type': 'application/json',
+                'X-Camera-Key': getattr(self.config, 'CAMERA_API_KEY', '')
+            }
             
-            response = requests.post(url, json=payload, timeout=5)
+            response = requests.post(url, json=payload, headers=headers, timeout=5)
             
             if response.status_code == 200 or response.status_code == 201:
                 return True
@@ -194,60 +198,29 @@ class DatabaseLogger:
     
     def _find_user(self, cursor, identifier: str) -> Optional[tuple]:
         """
-        Find user by name (folder name from known_faces)
+        Find user by name (folder name from known_faces).
+        Uses a single UNION ALL query instead of 4 sequential queries.
         
         Returns:
             (user_id, user_type, full_name) or None
         """
-        # Try college users (by name)
         cursor.execute("""
-            SELECT id, 'college' as user_type, name
-            FROM users
+            SELECT id, 'college' as user_type, name FROM users
             WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
-            LIMIT 1
-        """, (identifier,))
-        
-        result = cursor.fetchone()
-        if result:
-            return result
-        
-        # Try SHS users (by name)
-        cursor.execute("""
-            SELECT id, 'shs' as user_type, name
-            FROM shs_users
+            UNION ALL
+            SELECT id, 'shs', name FROM shs_users
             WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
-            LIMIT 1
-        """, (identifier,))
-        
-        result = cursor.fetchone()
-        if result:
-            return result
-        
-        # Try faculty users (by name)
-        cursor.execute("""
-            SELECT id, 'faculty' as user_type, name
-            FROM faculty_users
+            UNION ALL
+            SELECT id, 'faculty', name FROM faculty_users
             WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
-            LIMIT 1
-        """, (identifier,))
-        
-        result = cursor.fetchone()
-        if result:
-            return result
-        
-        # Try guests (by name)
-        cursor.execute("""
-            SELECT id, 'guest' as user_type, name
-            FROM guests
+            UNION ALL
+            SELECT id, 'guest', name FROM guests
             WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))
             LIMIT 1
-        """, (identifier,))
+        """, (identifier, identifier, identifier, identifier))
         
         result = cursor.fetchone()
-        if result:
-            return result
-        
-        return None
+        return result if result else None
     
     def get_today_attendance_count(self) -> int:
         """Get count of attendance records for today"""

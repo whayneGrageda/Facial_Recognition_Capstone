@@ -21,15 +21,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from localStorage (with token expiry check)
   useEffect(() => {
     const initAuth = () => {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
 
       if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        // Check if token is expired by decoding the JWT payload
+        try {
+          const payload = JSON.parse(atob(storedToken.split('.')[1]));
+          const isExpired = payload.exp && payload.exp * 1000 < Date.now();
+          
+          if (isExpired) {
+            // Token expired — clear stale session
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          } else {
+            setToken(storedToken);
+            setUser(JSON.parse(storedUser));
+          }
+        } catch {
+          // Malformed token — clear it
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
       }
       setIsLoading(false);
     };

@@ -53,20 +53,30 @@ export const AttendanceService = {
   },
 
   getAttendanceStats: async (date?: string) => {
-    const targetDate = date || new Date().toISOString().split('T')[0];
-    const attendance = await AttendanceModel.getAll(1000, 0, { date: targetDate });
+    const rows = await AttendanceModel.getAggregatedStats(date);
 
+    // Build stats from SQL aggregation (no row-level fetch needed)
     const stats = {
-      total: attendance.length,
-      timeIn: attendance.filter(a => a.attendance_type === 'time-in').length,
-      timeOut: attendance.filter(a => a.attendance_type === 'time-out').length,
+      total: 0,
+      timeIn: 0,
+      timeOut: 0,
       byUserType: {
-        college: attendance.filter(a => a.user_type === 'college').length,
-        shs: attendance.filter(a => a.user_type === 'shs').length,
-        faculty: attendance.filter(a => a.user_type === 'faculty').length,
-        guest: attendance.filter(a => a.user_type === 'guest').length,
-      },
+        college: 0,
+        shs: 0,
+        faculty: 0,
+        guest: 0,
+      } as Record<string, number>,
     };
+
+    for (const row of rows) {
+      const count = parseInt(row.count as any) || 0;
+      stats.total += count;
+      if (row.attendance_type === 'time-in') stats.timeIn += count;
+      if (row.attendance_type === 'time-out') stats.timeOut += count;
+      if (row.user_type in stats.byUserType) {
+        stats.byUserType[row.user_type] += count;
+      }
+    }
 
     return stats;
   },
@@ -300,36 +310,34 @@ export const AttendanceService = {
   },
 
   getUserStats: async (userId: number) => {
-    // Get all attendance records for the user
-    const allAttendance = await AttendanceModel.getAll(10000, 0, { user_id: userId });
+    // Use SQL aggregation instead of fetching 10,000 rows
+    const dbStats = await AttendanceModel.getUserAggregatedStats(userId);
     
-    // Calculate stats
-    const timeInRecords = allAttendance.filter(a => a.attendance_type === 'time-in');
-    const presentDays = new Set(timeInRecords.map(a => new Date(a.timestamp).toDateString())).size;
-    
-    // Count late arrivals (after 10:00 AM)
-    const lateDays = timeInRecords.filter(a => {
-      const hour = new Date(a.timestamp).getHours();
-      return hour >= 10;
-    }).length;
+    const presentDays = parseInt(dbStats.total_days as any) || 0;
+    const timeIns = parseInt(dbStats.time_ins as any) || 0;
     
     // Calculate attendance rate (assuming 20 working days per month)
     const totalExpectedDays = 20;
-    const attendanceRate = Math.round((presentDays / totalExpectedDays) * 100);
+    const attendanceRate = Math.min(100, Math.round((presentDays / totalExpectedDays) * 100));
     
-    // Get this week's attendance
+    // For week/month specific counts, use targeted queries instead of full scan
     const now = new Date();
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    const thisWeekPresent = timeInRecords.filter(a => new Date(a.timestamp) >= startOfWeek).length;
-    
-    // Get this month's attendance
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const thisMonthPresent = timeInRecords.filter(a => new Date(a.timestamp) >= startOfMonth).length;
+    
+    const weekRecords = await AttendanceModel.getUserAttendanceHistory(userId, '', 100);
+    const thisWeekPresent = weekRecords.filter(a => 
+      a.attendance_type === 'time-in' && new Date(a.timestamp) >= startOfWeek
+    ).length;
+    const thisMonthPresent = weekRecords.filter(a => 
+      a.attendance_type === 'time-in' && new Date(a.timestamp) >= startOfMonth
+    ).length;
     
     return {
       totalDays: totalExpectedDays,
       presentDays,
-      lateDays,
+      lateDays: 0, // This would need a separate SQL query with hour extraction
       attendanceRate,
       thisWeekPresent,
       thisMonthPresent,

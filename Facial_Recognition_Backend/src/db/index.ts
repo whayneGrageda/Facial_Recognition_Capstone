@@ -22,8 +22,9 @@ class Database {
     });
 
     this.pool.on('error', (err) => {
-      console.error('Unexpected error on idle client', err);
-      process.exit(-1);
+      console.error('⚠️ Unexpected error on idle client (pool will recover):', err.message);
+      // Don't exit — the pool handles reconnections automatically.
+      // Only fatal errors (e.g., auth failure) would need a restart.
     });
   }
 

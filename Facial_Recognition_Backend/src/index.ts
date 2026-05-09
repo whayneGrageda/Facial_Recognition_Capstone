@@ -68,6 +68,15 @@ const startServer = async () => {
   try {
     console.log('--- FACIAL RECOGNITION BACKEND INITIALIZATION ---');
 
+    // 0. Validate critical environment variables
+    const requiredEnvVars = ['JWT_SECRET', 'DB_PASSWORD', 'CAMERA_API_KEY'];
+    const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+    if (missingVars.length > 0) {
+      console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
+      process.exit(1);
+    }
+    console.log('✅ Environment variables validated');
+
     // 1. Initialize Database
     await db.initialize();
     console.log('✅ Database initialized');
@@ -109,13 +118,33 @@ const startServer = async () => {
     });
 
     // 6. Start Listening
-    app.listen(PORT, HOST, () => {
+    const server = app.listen(PORT, HOST, () => {
       console.log('=================================');
       console.log(`🚀 Server is running on http://${HOST}:${PORT}`);
       console.log(`🗄️  Database: ${process.env.DB_NAME}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log('=================================');
     });
+
+    // 7. Graceful shutdown
+    const gracefulShutdown = async (signal: string) => {
+      console.log(`\n${signal} received. Shutting down gracefully...`);
+      server.close(async () => {
+        console.log('🛑 HTTP server closed');
+        await db.close();
+        console.log('🛑 Database connections closed');
+        process.exit(0);
+      });
+
+      // Force shutdown if graceful takes too long
+      setTimeout(() => {
+        console.error('⚠️ Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   } catch (error) {
     console.error('❌ Failed to start server:', error);

@@ -179,8 +179,8 @@ class CameraSystem:
         # Set buffer size to 1 for minimal latency
         try:
             self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        except:
-            pass
+        except Exception as e:
+            print(f"NOTE: Camera buffer size not configurable: {e}")
         
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.CAMERA_WIDTH)
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.CAMERA_HEIGHT)

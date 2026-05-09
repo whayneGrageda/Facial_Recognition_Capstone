@@ -1,11 +1,28 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import * as AttendanceController from '../controllers/attendanceController.js';
 import { authenticateJWT, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// Public endpoint for facial recognition system (uses API key)
-router.post('/record-from-camera', AttendanceController.recordAttendance);
+// API key middleware for camera system authentication
+const authenticateCameraKey = (req: Request, res: Response, next: NextFunction) => {
+  const cameraKey = req.headers['x-camera-key'] as string;
+  const expectedKey = process.env.CAMERA_API_KEY;
+
+  if (!expectedKey) {
+    console.warn('⚠️ CAMERA_API_KEY not configured — camera endpoint is rejecting all requests');
+    return res.status(503).json({ status: 503, message: 'Camera authentication not configured' });
+  }
+
+  if (!cameraKey || cameraKey !== expectedKey) {
+    return res.status(401).json({ status: 401, message: 'Invalid or missing camera API key' });
+  }
+
+  next();
+};
+
+// Camera endpoint - requires API key in X-Camera-Key header
+router.post('/record-from-camera', authenticateCameraKey, AttendanceController.recordAttendance);
 
 // All other routes require authentication
 router.use(authenticateJWT);

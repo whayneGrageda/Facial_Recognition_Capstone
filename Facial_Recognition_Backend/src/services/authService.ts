@@ -9,12 +9,19 @@ import { NotificationService } from './notificationService.js';
 // In-memory store for verification codes (in production, use Redis or database)
 const verificationCodes = new Map<string, { code: string; expiresAt: Date; attempts: number }>();
 
-// Configure nodemailer transporter
+// Configure nodemailer transporter (requires GMAIL_EMAIL and GMAIL_APP_PASSWORD env vars)
+const gmailEmail = process.env.GMAIL_EMAIL;
+const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+
+if (!gmailEmail || !gmailAppPassword) {
+  console.warn('⚠️ WARNING: GMAIL_EMAIL or GMAIL_APP_PASSWORD not set. Email features will be disabled.');
+}
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.GMAIL_EMAIL || 'teamjarvis.technologies@gmail.com',
-    pass: process.env.GMAIL_APP_PASSWORD || 'rtwdekpmwrwgistm'
+    user: gmailEmail || '',
+    pass: gmailAppPassword || ''
   }
 });
 
