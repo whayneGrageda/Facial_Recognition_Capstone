@@ -142,6 +142,32 @@ The system recently underwent a major architectural transition from legacy model
 
 **Result**: Fast (~0.4s), highly accurate recognition with 25-29 FPS and rock-solid stability without memory crashes.
 
+### Security & Architecture Hardening (May 2026)
+
+1. **Camera API Authentication**: Secured the camera-to-backend endpoint with `X-Camera-Key` middleware; no more unauthenticated recording.
+2. **Startup Integrity Checks**: Backend validates `JWT_SECRET`, `DB_PASSWORD`, and `CAMERA_API_KEY` at boot — prevents zombie deployments.
+3. **JWT Expiration Guard**: Frontend `AuthContext` clears stale tokens on load before they cause 401 cascades.
+4. **Credential Cleanup**: Removed hardcoded email app passwords; fully environment-driven.
+
+### Database Performance Overhaul (May 2026)
+
+1. **SQL Aggregation**: Replaced in-memory JS stats calculations with native `COUNT(*) GROUP BY` queries — orders of magnitude faster for large datasets.
+2. **Indexed Date Filters**: Converted `CAST(timestamp AS TEXT) LIKE` patterns to index-friendly `BETWEEN` range queries.
+3. **Composite Indexes**: Added indexes on `attendance(user_id, user_type, timestamp)` and user name columns via migration `009`.
+4. **Query Safety**: Hard `LIMIT 10000` cap on all list queries to prevent full-table scans.
+5. **Consolidated User Lookups**: Single `UNION ALL` query replaces 4 sequential table scans in the recognition logger.
+6. **Pool Resilience**: Idle pool errors no longer crash the server — reconnection is handled gracefully.
+
+### Camera Pipeline Optimization (May 2026)
+
+1. **Deferred Liveness Detection**: Anti-spoof inference moved from every-frame (~30 calls per event) to once-at-dwell-confirmation (~1 call). **~90% reduction** in liveness compute.
+2. **Single User Lookup**: `log_attendance()` resolves user once and reuses for both validation and logging. **~50% fewer DB queries** per recognition event.
+3. **ThreadedConnectionPool**: Upgraded from `SimpleConnectionPool` for thread-safe database access.
+4. **Content-Hash Cache Invalidation**: Face encoding cache now detects added/modified/deleted images via MD5 hash — not just folder count.
+5. **AI Agent Memory**: Frames JPEG-compressed before queueing (~50KB vs ~900KB). **~80% queue memory reduction**.
+6. **TemporalVoter Cleanup**: Track cleanup runs every 10 votes with a hard 50-track cap to prevent unbounded growth.
+7. **Exception Visibility**: All bare `except: pass` blocks replaced with logged exceptions.
+
 ---
 
 ## Setup & Installation
@@ -251,7 +277,7 @@ FacialRecognitionCapstone/
 - `GET /api/attendance` - Get attendance logs
 - `GET /api/attendance/overview` - Get attendance statistics
 - `POST /api/attendance/report` - Generate PDF report
-- `POST /api/attendance/record-from-camera` - Record attendance from camera system (public endpoint)
+- `POST /api/attendance/record-from-camera` - Record attendance from camera system (authenticated via `X-Camera-Key`)
 
 ### Notifications
 - `GET /api/notifications` - Get user notifications
