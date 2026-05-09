@@ -43,7 +43,8 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
         recognizer = FaceRecognizer(config)
         db_logger = DatabaseLogger(config)
         last_recognition_time = {}
-        dwell_trackers = {} # Tracks {key: {'first_seen': datetime, 'last_seen': datetime}}
+        dwell_trackers = {} # Tracks {key: {'first_seen': datetime, 'last_seen': datetime, 'bbox': tuple, 'frame': ndarray}}
+        spoof_cooldowns = {} # Tracks {name: last_spoof_log_time}
         
         print(f"[{attendance_type.upper()}] Recognition worker started")
         
@@ -95,6 +96,32 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                             dwell_duration = (current_time - dwell_trackers[key]['first_seen']).total_seconds()
                             
                             if dwell_duration >= getattr(config, 'DWELL_TIME_SECONDS', 1.5):
+                                # === DEFERRED LIVENESS CHECK ===
+                                # Only run anti-spoof ONCE at confirmation, not every frame
+                                if recognizer.enable_liveness and recognizer.liveness_detector:
+                                    bbox = locations[i]
+                                    face_w = bbox[1] - bbox[3]  # right - left
+                                    face_h = bbox[2] - bbox[0]  # bottom - top
+                                    if face_w >= 60 and face_h >= 60:
+                                        is_live, liveness_score = recognizer.liveness_detector.is_live(frame, bbox)
+                                        if not is_live:
+                                            # Rate-limited spoof warning
+                                            spoof_key = f"spoof_{attendance_type}"
+                                            last_spoof = spoof_cooldowns.get(spoof_key, 0)
+                                            if (current_time - last_spoof).total_seconds() > 5.0 if isinstance(last_spoof, datetime) else True:
+                                                print(f"[BLOCKED] {attendance_type.upper()}: {name} failed liveness (score: {liveness_score:.2%})")
+                                                spoof_cooldowns[spoof_key] = current_time
+                                            
+                                            # Send spoof signal to main thread for AI agent + red box display
+                                            if not results_queue.full():
+                                                spoof_results = dict(locations=[bbox], names=["SPOOF"], confidences=[1.0 - liveness_score], timestamp=time.time())
+                                                results_queue.put(spoof_results)
+                                            
+                                            last_recognition_time[key] = current_time
+                                            if key in dwell_trackers:
+                                                del dwell_trackers[key]
+                                            continue
+                                
                                 success, reason = db_logger.log_attendance(name, confidences[i], attendance_type)
                                 if success:
                                     print(f"[OK] {attendance_type.upper()}: {name} (confidence: {confidences[i]:.2%}) - Dwelled {dwell_duration:.1f}s")
@@ -107,9 +134,6 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                                         del dwell_trackers[key]
                                     else:
                                         print(f"[ERROR] Failed to log {attendance_type.upper()} for {name}: {reason}")
-                    elif name == "SPOOF":
-                        # Optional: Log the spoofing attempt to the console or database
-                        print(f"[WARNING] {attendance_type.upper()}: Spoof attempt detected! (confidence: {confidences[i]:.2%})")
                 
                 # Send results back to main process
                 if not results_queue.full():
@@ -247,8 +271,9 @@ class CameraSystem:
                 # JPEG compress to bypass IPC memory bandwidth bottleneck, keeping full resolution
                 _, encoded_img = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
                 self.frame_queue.put_nowait(encoded_img.tobytes())
-            except:
-                pass
+            except Exception as e:
+                if self.frame_count % 100 == 0:  # Rate-limit error logging
+                    print(f"WARNING: Frame queue error: {e}")
         
         # Draw results (Temporal Persistence)
         # Scale coordinates from recognition resolution (480x360) to display resolution
@@ -322,8 +347,8 @@ class CameraSystem:
         if self.camera:
             try:
                 self.camera.release()
-            except:
-                pass
+            except Exception as e:
+                print(f"WARNING: Error releasing camera: {e}")
         if hasattr(self, 'process'):
             self.process.terminate()
             self.process.join(timeout=1.0)

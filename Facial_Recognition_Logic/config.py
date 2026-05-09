@@ -28,7 +28,6 @@ class Config:
     DWELL_TIME_SECONDS = float(os.getenv('DWELL_TIME_SECONDS', '1.5'))  # Seconds a person must stay in frame before time-in
     
     # Performance & Stability settings
-    RECOGNITION_SCALE = float(os.getenv('RECOGNITION_SCALE', '0.5'))  # Downscale for detection
     BOX_PERSISTENCE_FRAMES = int(os.getenv('BOX_PERSISTENCE_FRAMES', '10'))  # Keep boxes for 10 frames
     USE_CLAHE = os.getenv('USE_CLAHE', 'True').lower() == 'true'
     QUEUE_SIZE = int(os.getenv('QUEUE_SIZE', '1'))  # Set to 1 to always get latest frame

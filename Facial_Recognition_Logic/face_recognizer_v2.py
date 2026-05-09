@@ -63,9 +63,9 @@ class TemporalVoter:
         """Vote on identity for a face at a given location using IoU matching."""
         now = time.time()
         
-        # Periodic cleanup
+        # Periodic cleanup — every call, but only does work if needed
         self._cleanup_counter += 1
-        if self._cleanup_counter % 50 == 0:
+        if self._cleanup_counter % 10 == 0 or len(self.tracks) > 50:
             self._cleanup_stale()
 
         # Find best matching track via IoU
@@ -335,6 +335,13 @@ class FaceRecognizer:
                 if num_folders != num_cached:
                     print(f"[v2] Cache mismatch: {num_folders} folders vs {num_cached} cached. Rebuilding...")
                     return False
+                
+                # Content hash: check if any images were added/removed/modified
+                cached_hash = data.get('content_hash', '')
+                current_hash = self._compute_content_hash(known_faces_path)
+                if cached_hash and current_hash != cached_hash:
+                    print(f"[v2] Cache content changed (files added/removed/modified). Rebuilding...")
+                    return False
 
             self._rebuild_numpy_encodings()
             print(f"[v2] Loaded {len(self.known_face_names)} faces from cache")
@@ -348,16 +355,46 @@ class FaceRecognizer:
         """Save encodings to cache file."""
         try:
             os.makedirs(os.path.dirname(self.cache_file) or '.', exist_ok=True)
+            
+            known_faces_path = getattr(self.config, 'KNOWN_FACES_PATH', 'known_faces')
+            content_hash = self._compute_content_hash(known_faces_path)
+            
             data = {
                 'version': self.cache_version,
                 'encodings': [enc.astype(np.float32) for enc in self.known_face_encodings],
                 'names': self.known_face_names,
+                'content_hash': content_hash,
             }
             with open(self.cache_file, 'wb') as f:
                 pickle.dump(data, f)
             print(f"[v2] Saved cache to {self.cache_file}")
         except Exception as e:
             print(f"[v2] Cache save failed: {e}")
+
+    def _compute_content_hash(self, known_faces_path: str) -> str:
+        """Compute a hash of all image filenames + modification times.
+        
+        This catches cases where images are added, removed, or replaced
+        without changing the folder count.
+        """
+        import hashlib
+        hasher = hashlib.md5()
+        
+        try:
+            for person_name in sorted(os.listdir(known_faces_path)):
+                person_dir = os.path.join(known_faces_path, person_name)
+                if not os.path.isdir(person_dir):
+                    continue
+                hasher.update(person_name.encode())
+                for fname in sorted(os.listdir(person_dir)):
+                    if fname.lower().endswith(('.jpg', '.jpeg', '.png')):
+                        fpath = os.path.join(person_dir, fname)
+                        mtime = os.path.getmtime(fpath)
+                        hasher.update(f"{fname}:{mtime}".encode())
+        except Exception:
+            return ""
+        
+        return hasher.hexdigest()
 
     # ---- Recognition ----
 
@@ -405,24 +442,7 @@ class FaceRecognizer:
             # Match against known faces
             name, confidence = self._match_face(feature)
             
-            # Apply liveness detection if enabled
             bbox = (top, right, bottom, left)
-            is_live = True
-            
-            if self.enable_liveness and name != "Unknown":
-                # Check face size to avoid falsely spoofing distant small faces
-                face_w = right - left
-                face_h = bottom - top
-                
-                if face_w < 60 or face_h < 60:
-                    # Too small/far to reliably verify liveness. 
-                    # Force them to step closer by falling back to Unknown.
-                    name = "Unknown"
-                else:
-                    is_live, liveness_score = self.liveness_detector.is_live(frame, bbox)
-                    if not is_live:
-                        name = "SPOOF"
-                        confidence = 1.0 - liveness_score
 
             # Apply temporal voting for stability
             voted_name, voted_conf, status = self.voter.vote(bbox, name, confidence)

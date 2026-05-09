@@ -22,8 +22,8 @@ class DatabaseLogger:
     def _initialize_pool(self):
         """Initialize connection pool"""
         try:
-            self.connection_pool = psycopg2.pool.SimpleConnectionPool(
-                1, 10,
+            self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
+                1, 5,  # min=1, max=5 (each camera process only needs 1-2)
                 host=self.config.DB_HOST,
                 port=self.config.DB_PORT,
                 database=self.config.DB_NAME,
@@ -35,9 +35,26 @@ class DatabaseLogger:
             print(f"✗ Database connection failed: {e}")
             self.connection_pool = None
     
+    def _get_last_status_for_user(self, cursor, user_id: int, user_type: str) -> Optional[str]:
+        """
+        Get the most recent attendance status for a resolved user today.
+        Internal method — expects an already-resolved user_id/user_type.
+        """
+        cursor.execute("""
+            SELECT attendance_type 
+            FROM attendance 
+            WHERE user_id = %s AND user_type = %s AND DATE(timestamp) = CURRENT_DATE
+            ORDER BY timestamp DESC
+            LIMIT 1
+        """, (user_id, user_type))
+        
+        result = cursor.fetchone()
+        return result[0] if result else None
+
     def get_last_attendance_status(self, user_identifier: str) -> Optional[str]:
         """
         Get the most recent attendance status for the user today.
+        Public convenience method (does its own user lookup).
         """
         if self.connection_pool is None:
             return None
@@ -52,19 +69,7 @@ class DatabaseLogger:
                 return None
                 
             user_id, user_type, _ = user_info
-            
-            cursor.execute("""
-                SELECT attendance_type 
-                FROM attendance 
-                WHERE user_id = %s AND user_type = %s AND DATE(timestamp) = CURRENT_DATE
-                ORDER BY timestamp DESC
-                LIMIT 1
-            """, (user_id, user_type))
-            
-            result = cursor.fetchone()
-            if result:
-                return result[0]
-            return None
+            return self._get_last_status_for_user(cursor, user_id, user_type)
             
         except Exception as e:
             print(f"ERROR getting last attendance status: {e}")
@@ -75,7 +80,10 @@ class DatabaseLogger:
 
     def log_attendance(self, user_identifier: str, confidence: float, attendance_type: str = 'time-in') -> tuple[bool, str]:
         """
-        Log attendance for a recognized user
+        Log attendance for a recognized user.
+        
+        Performs a SINGLE user lookup and reuses it for both status
+        validation and the actual log call (API or direct DB).
         
         Args:
             user_identifier: Student ID, employee ID, or username
@@ -85,45 +93,50 @@ class DatabaseLogger:
         Returns:
             (success_bool, status_message)
         """
-        # Validate state logic (prevent double time-in or double time-out)
-        last_status = self.get_last_attendance_status(user_identifier)
-        
-        if last_status == attendance_type:
-            # User is already in the requested state today
-            return False, f"ALREADY_{attendance_type.upper()}"
-            
-        # Try API first if enabled
-        if self.use_api:
-            success = self._log_via_api(user_identifier, confidence, attendance_type)
-            if success:
-                return True, "LOGGED_API"
-            print("WARNING: API logging failed, falling back to direct database")
-        
-        # Fallback to direct database insertion
-        success = self._log_via_database(user_identifier, confidence, attendance_type)
-        if success:
-            return True, "LOGGED_DB"
-        return False, "ERROR"
-    
-    def _log_via_api(self, user_identifier: str, confidence: float, attendance_type: str) -> bool:
-        """Log attendance via Backend API (creates notifications automatically)"""
         if self.connection_pool is None:
-            return False
+            return False, "NO_DB"
         
         conn = None
         try:
-            # First, find the user to get their ID and type
             conn = self.connection_pool.getconn()
             cursor = conn.cursor()
-            user_info = self._find_user(cursor, user_identifier)
             
+            # === Single user lookup (previously called 2-3 times) ===
+            user_info = self._find_user(cursor, user_identifier)
             if user_info is None:
                 print(f"WARNING: User not found in database: {user_identifier}")
-                return False
+                return False, "USER_NOT_FOUND"
             
             user_id, user_type, full_name = user_info
             
-            # Call backend API (requires camera API key for authentication)
+            # Validate state logic (prevent double time-in or double time-out)
+            last_status = self._get_last_status_for_user(cursor, user_id, user_type)
+            if last_status == attendance_type:
+                return False, f"ALREADY_{attendance_type.upper()}"
+            
+            # Try API first if enabled
+            if self.use_api:
+                success = self._log_via_api_with_user(user_id, user_type, full_name, attendance_type)
+                if success:
+                    return True, "LOGGED_API"
+                print("WARNING: API logging failed, falling back to direct database")
+            
+            # Fallback to direct database insertion
+            success = self._log_via_database_with_user(cursor, conn, user_id, user_type, full_name, attendance_type)
+            if success:
+                return True, "LOGGED_DB"
+            return False, "ERROR"
+            
+        except Exception as e:
+            print(f"ERROR in log_attendance: {e}")
+            return False, "ERROR"
+        finally:
+            if conn:
+                self.connection_pool.putconn(conn)
+    
+    def _log_via_api_with_user(self, user_id: int, user_type: str, full_name: str, attendance_type: str) -> bool:
+        """Log attendance via Backend API using pre-resolved user info."""
+        try:
             url = f"{self.api_base_url}/attendance/record-from-camera"
             payload = {
                 'user_id': user_id,
@@ -150,51 +163,24 @@ class DatabaseLogger:
         except Exception as e:
             print(f"ERROR in API logging: {e}")
             return False
-        finally:
-            if conn:
-                self.connection_pool.putconn(conn)
     
-    def _log_via_database(self, user_identifier: str, confidence: float, attendance_type: str) -> bool:
-        """Direct database insertion (fallback, does NOT create notifications)"""
-        if self.connection_pool is None:
-            print("ERROR: Database not connected")
-            return False
-        
-        conn = None
+    def _log_via_database_with_user(self, cursor, conn, user_id: int, user_type: str, full_name: str, attendance_type: str) -> bool:
+        """Direct database insertion using pre-resolved user info."""
         try:
-            conn = self.connection_pool.getconn()
-            cursor = conn.cursor()
-            
-            # First, find the user and determine their type
-            user_info = self._find_user(cursor, user_identifier)
-            
-            if user_info is None:
-                print(f"WARNING: User not found in database: {user_identifier}")
-                return False
-            
-            user_id, user_type, full_name = user_info
-            
-            # Insert attendance record with attendance_type
             cursor.execute("""
                 INSERT INTO attendance (user_id, user_type, name, timestamp, attendance_type)
                 VALUES (%s, %s, %s, NOW(), %s)
                 RETURNING id
             """, (user_id, user_type, full_name, attendance_type))
             
-            attendance_id = cursor.fetchone()[0]
+            cursor.fetchone()
             conn.commit()
-            
             return True
             
         except Exception as e:
-            if conn:
-                conn.rollback()
+            conn.rollback()
             print(f"ERROR logging attendance: {e}")
             return False
-        
-        finally:
-            if conn:
-                self.connection_pool.putconn(conn)
     
     def _find_user(self, cursor, identifier: str) -> Optional[tuple]:
         """

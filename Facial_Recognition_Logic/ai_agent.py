@@ -3,6 +3,7 @@ import threading
 import queue
 import time
 import cv2
+import numpy as np
 from PIL import Image
 
 try:
@@ -52,19 +53,21 @@ class SecurityAnalystAgent:
             return
             
         if not self.task_queue.full():
-            # Copy frame to ensure it isn't mutated by the main thread
-            frame_copy = frame.copy()
-            self.task_queue.put((frame_copy, event_type, metadata or {}))
+            # JPEG compress frame before queueing (~50KB vs ~900KB raw)
+            _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            self.task_queue.put((encoded.tobytes(), event_type, metadata or {}))
             self.last_alert_time = current_time
             
     def _worker_loop(self):
         while True:
             try:
-                frame, event_type, metadata = self.task_queue.get()
+                frame_bytes, event_type, metadata = self.task_queue.get()
                 
                 print(f"\n[AI AGENT] Analyzing {event_type} event... Please wait.")
                 
-                # Convert CV2 BGR to RGB PIL Image
+                # Decode JPEG bytes back to numpy, then convert to PIL
+                nparr = np.frombuffer(frame_bytes, np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 pil_img = Image.fromarray(rgb_frame)
                 
