@@ -161,20 +161,21 @@
 .dashboard-page,
 .attendance-overview,
 .user-management,
-.login-page,
 .settings-page,
 .notifications-page,
 .attendance-history-page,
 .user-dashboard,
-[class$="-page"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]):not(.login-page):not(.landing-page),
+[class$="-page"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]):not(.login-page):not(.landing-page):not(.register-page):not(.forgot-password-page),
 [class$="-overview"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]),
 [class$="-management"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]) {
   animation: pageSlideUp 0.5s ease-out;
 }
 
-/* Explicitly disable pageSlideUp animation for login and landing pages */
+/* Explicitly disable pageSlideUp animation for auth pages */
 .login-page,
-.landing-page {
+.landing-page,
+.register-page,
+.forgot-password-page {
   animation: none !important;
 }
 
