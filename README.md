@@ -14,6 +14,8 @@ A high-performance, automated attendance tracking system leveraging state-of-the
 - **Security Alerts**: Automated detection and logging of suspicious activities with severity-based classification.
 - **Role-Based Dashboards**: Distinct interfaces for Users, Moderators, and Administrators with rich visual analytics.
 - **Metadata Management**: Full CRUD operations for courses, strands, and departments with soft enable/disable functionality.
+- **Modern Landing Page**: Professional hero section with animated facial recognition visualization and clear CTAs.
+- **Profile Management**: Unified profile dropdown in header for quick access to user settings and logout.
 - **Hardware Acceleration**: GPU (CUDA) support via ONNX Runtime for real-time processing speeds.
 
 ## Technology Stack
@@ -160,6 +162,17 @@ The system recently underwent a major architectural transition from legacy model
 5. **Consolidated User Lookups**: Single `UNION ALL` query replaces 4 sequential table scans in the recognition logger.
 6. **Pool Resilience**: Idle pool errors no longer crash the server — reconnection is handled gracefully.
 7. **Metadata Soft Delete**: Added `is_active` boolean field to courses, strands, and departments for soft enable/disable functionality (migration `011`).
+
+### UI/UX Enhancements (May 2026)
+
+1. **Modern Landing Page**: Professional hero section with facial recognition visualization, animated landmark nodes, and clear call-to-action buttons.
+2. **Enhanced Dashboard Design**: Vibrant gold-themed color palette with gradient cards, smooth animations, and improved visual hierarchy.
+3. **Profile Dropdown Menu**: Unified user profile access in top-right header with "My Profile" and "Logout" options, replacing sidebar footer.
+4. **Metadata Management UI**: Full CRUD interfaces for courses, strands, and departments with status toggle, matching UserManagement styling.
+5. **Consistent Animations**: Smooth page transitions (slide-up fade-in) across all dashboard pages, excluding login and landing pages.
+6. **Responsive Card Layouts**: Optimized dashboard card heights (650px max) for better content visibility without excessive scrolling.
+7. **Security Alert Cards**: Clean, bordered design with severity-based color coding and hover effects.
+8. **Improved Typography**: Consistent font sizing and spacing across all components with proper contrast ratios.
 
 ### Camera Pipeline Optimization (May 2026)
 
