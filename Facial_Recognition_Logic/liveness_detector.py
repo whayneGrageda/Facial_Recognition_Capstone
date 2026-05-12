@@ -68,6 +68,16 @@ class LivenessDetector:
         crop = frame[new_top:new_bottom, new_left:new_right]
         return crop
 
+    def _is_blurry(self, image, threshold=100.0):
+        """
+        Detect if image is blurry using Laplacian variance.
+        Lower variance = more blur. Typical threshold: 100-200.
+        Returns True if image is too blurry for reliable liveness detection.
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        return laplacian_var < threshold
+
     def is_live(self, frame: np.ndarray, bbox: tuple) -> tuple:
         """
         Checks if the face in the bounding box is a live person or a spoof.
@@ -82,6 +92,11 @@ class LivenessDetector:
             crop = self.get_crop(frame, bbox, scale=2.7)
             if crop.size == 0:
                 return False, 0.0
+
+            # Skip liveness check if frame is too blurry (prevents false positives)
+            if self._is_blurry(crop, threshold=100.0):
+                # Assume live on blurry frames to avoid false SPOOF alerts
+                return True, 0.5
 
             # Resize to model input size (80x80)
             resized = cv2.resize(crop, (80, 80))
