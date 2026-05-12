@@ -177,12 +177,15 @@ The system recently underwent a major architectural transition from legacy model
 ### Camera Pipeline Optimization (May 2026)
 
 1. **Deferred Liveness Detection**: Anti-spoof inference moved from every-frame (~30 calls per event) to once-at-dwell-confirmation (~1 call). **~90% reduction** in liveness compute.
-2. **Single User Lookup**: `log_attendance()` resolves user once and reuses for both validation and logging. **~50% fewer DB queries** per recognition event.
-3. **ThreadedConnectionPool**: Upgraded from `SimpleConnectionPool` for thread-safe database access.
-4. **Content-Hash Cache Invalidation**: Face encoding cache now detects added/modified/deleted images via MD5 hash — not just folder count.
-5. **AI Agent Memory**: Frames JPEG-compressed before queueing (~50KB vs ~900KB). **~80% queue memory reduction**.
-6. **TemporalVoter Cleanup**: Track cleanup runs every 10 votes with a hard 50-track cap to prevent unbounded growth.
-7. **Exception Visibility**: All bare `except: pass` blocks replaced with logged exceptions.
+2. **Blur Detection Filter**: Added Laplacian variance-based blur detection to skip liveness checks on blurry frames, preventing false positives from motion blur or out-of-focus frames. Threshold: 100.0 (configurable).
+3. **Single-Frame Liveness Decision**: Simplified liveness detection to single-frame classification (removed temporal voting) for faster response and clearer SPOOF signals.
+4. **Liveness Check Location**: Moved anti-spoofing from main.py to face_recognizer_v2.py (after matching, before temporal voting) for better integration with recognition pipeline.
+5. **Single User Lookup**: `log_attendance()` resolves user once and reuses for both validation and logging. **~50% fewer DB queries** per recognition event.
+6. **ThreadedConnectionPool**: Upgraded from `SimpleConnectionPool` for thread-safe database access.
+7. **Content-Hash Cache Invalidation**: Face encoding cache now detects added/modified/deleted images via MD5 hash — not just folder count.
+8. **AI Agent Memory**: Frames JPEG-compressed before queueing (~50KB vs ~900KB). **~80% queue memory reduction**.
+9. **TemporalVoter Cleanup**: Track cleanup runs every 10 votes with a hard 50-track cap to prevent unbounded growth.
+10. **Exception Visibility**: All bare `except: pass` blocks replaced with logged exceptions.
 
 ---
 
@@ -231,12 +234,38 @@ pip install -r requirements.txt
 **Note**: This includes FAISS for fast similarity search. If you encounter issues installing `faiss-cpu`, ensure you have the latest pip: `pip install --upgrade pip`
 
 3. Create `.env` file based on `.env.example` and configure database credentials.
-4. Run the AI engine:
+4. Configure liveness detection (optional):
+```bash
+# Anti-Spoofing Settings
+ENABLE_LIVENESS=True
+LIVENESS_THRESHOLD=0.7  # Higher = stricter (0.5-0.9 recommended)
+```
+5. Run the AI engine:
 ```bash
 python main.py
 ```
 
-**Note:** Large model files (`.pth` files) are not included in the repository due to GitHub's file size limits. On the first run, the system will automatically download the necessary core models and rebuild the optimized face encoding cache with FAISS index.
+**Note:** Large model files (`.pth` files) are not included in the repository due to GitHub's file size limits. On the first run, the system will automatically download the necessary core models (including MiniFASNetV2 for liveness detection) and rebuild the optimized face encoding cache with FAISS index.
+
+#### Liveness Detection Configuration
+
+The system uses **MiniFASNetV2** for anti-spoofing detection. Key parameters:
+
+- **ENABLE_LIVENESS**: Enable/disable liveness detection (default: `True`)
+- **LIVENESS_THRESHOLD**: Confidence threshold for real vs. fake classification (default: `0.7`)
+  - Lower (0.5-0.6): More lenient, fewer false positives, may miss some spoofs
+  - Higher (0.8-0.9): Stricter, catches more spoofs, may have false positives
+- **Blur Detection**: Automatically skips liveness check on blurry frames (threshold: 100.0 Laplacian variance)
+  - Prevents false positives from motion blur or out-of-focus frames
+  - Blurry frames are assumed live to avoid blocking legitimate users
+
+**How it works:**
+1. Face detected and recognized
+2. If recognized (not "Unknown"), run liveness check
+3. Check if frame is blurry → Skip if too blurry (assume live)
+4. Run MiniFASNetV2 inference on clear frames
+5. If liveness score < threshold → Mark as "SPOOF"
+6. SPOOF triggers red box display + AI agent analysis + backend security alert
 
 ---
 
