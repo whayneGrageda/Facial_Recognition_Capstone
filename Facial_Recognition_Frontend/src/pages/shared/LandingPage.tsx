@@ -23,18 +23,14 @@ const LandingPage: React.FC = () => {
       <main>
         {/* Hero Section */}
         <section className="landing-hero">
-          {/* Background Container with Floating Animation */}
-          <div className="landing-hero-bg floating-mesh">
+          {/* Background Container */}
+          <div className="landing-hero-bg">
             <div 
               className="landing-hero-bg-image" 
               style={{ backgroundImage: `url(${FaceModelBg})` }}
             >
               <div className="landing-hero-overlay-dark"></div>
               <div className="landing-hero-overlay-gradient"></div>
-            </div>
-            {/* Scanning Line Overlay */}
-            <div className="landing-hero-scan-container">
-              <div className="scan-line"></div>
             </div>
             {/* Pulsing Landmark Nodes */}
             <div className="landing-hero-nodes-container">

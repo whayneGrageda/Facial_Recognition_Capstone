@@ -86,6 +86,9 @@
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(201, 168, 76, 0.2), 0 0 0 1px rgba(201, 168, 76, 0.1) inset;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  max-height: 650px;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-card:hover {
@@ -97,10 +100,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1rem 1.25rem;
   background: linear-gradient(135deg, #C9A84C 0%, #E8C97A 100%);
   border-bottom: 2px solid #8B6914;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .card-title {
@@ -117,16 +121,17 @@
 
 .card-title h3 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #ffffff;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .card-body {
-  padding: 1.5rem;
-  max-height: 600px;
+  padding: 1rem;
+  max-height: 630px;
   overflow-y: auto;
+  flex: 1;
 }
 
 /* Custom scrollbar */
