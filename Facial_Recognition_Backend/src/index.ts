@@ -3,9 +3,14 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import db from './db/index.js';
 import { runMigrations } from './migrations/index.js';
 import { runSeeds } from './seeds/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
@@ -18,6 +23,7 @@ import moderatorRoutes from './routes/moderatorRoutes.js';
 import metadataRoutes from './routes/metadataRoutes.js';
 import faceImageRoutes from './routes/faceImageRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import securityAlertRoutes from './routes/securityAlertRoutes.js';
 
 dotenv.config();
 
@@ -36,6 +42,12 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' })); // Increased limit for face image uploads
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Serve security alert images statically
+// Images are stored in Facial_Recognition_Logic/security_alerts/
+const securityAlertsPath = path.join(__dirname, '../../Facial_Recognition_Logic/security_alerts');
+app.use('/security-alert-images', express.static(securityAlertsPath));
+console.log(`📸 Serving security alert images from: ${securityAlertsPath}`);
 
 // Request logging
 app.use((req, res, next) => {
@@ -104,6 +116,7 @@ const startServer = async () => {
     app.use('/api/metadata', metadataRoutes);
     app.use('/api/face-images', faceImageRoutes);
     app.use('/api/notifications', notificationRoutes);
+    app.use('/api/security-alerts', securityAlertRoutes);
     
     console.log('✅ Routes initialized');
 

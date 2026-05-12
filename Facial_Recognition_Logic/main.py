@@ -377,7 +377,7 @@ def main():
     # Initialize AI Agent
     ai_agent = None
     if SecurityAnalystAgent is not None:
-        ai_agent = SecurityAnalystAgent(config.GEMINI_API_KEY)
+        ai_agent = SecurityAnalystAgent(config.GEMINI_API_KEY, config)
     
     systems = []
     

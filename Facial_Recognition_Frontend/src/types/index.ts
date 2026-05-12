@@ -94,28 +94,34 @@ export interface Course {
   id: number;
   name: string;
   description?: string;
+  is_active: boolean;
 }
 
 export interface Year {
   id: number;
   year_name: string;
+  is_active: boolean;
 }
 
 export interface Strand {
   id: number;
   name: string;
+  acronym?: string;
   description?: string;
+  is_active: boolean;
 }
 
 export interface Grade {
   id: number;
   grade_name: string;
+  is_active: boolean;
 }
 
 export interface Department {
   id: number;
   department_name: string;
   description?: string;
+  is_active: boolean;
 }
 
 // ===================================

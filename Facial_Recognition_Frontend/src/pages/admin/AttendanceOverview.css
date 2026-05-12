@@ -302,11 +302,17 @@
 }
 
 .chart-card {
-  background: #F5EDD8;  /* cream background */
-  border: 1px solid #D9C9A8;
-  border-radius: 1rem;
+  background: linear-gradient(135deg, #ffffff 0%, #F5EDD8 100%);
+  border: 2px solid #C9A84C;
+  border-radius: 1.5rem;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(201, 168, 76, 0.2), 0 0 0 1px rgba(201, 168, 76, 0.1) inset;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chart-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.3), 0 0 0 1px rgba(201, 168, 76, 0.2) inset;
 }
 
 .chart-card.full-width {
@@ -315,6 +321,10 @@
 
 .chart-header {
   margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #C9A84C 0%, #E8C97A 100%);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.3);
 }
 
 .chart-title-group {
@@ -324,22 +334,26 @@
 }
 
 .chart-icon {
-  color: #C9A84C;
+  color: #0A0602;
   flex-shrink: 0;
   margin-top: 0.125rem;
+  filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.5));
 }
 
 .chart-title-group h3 {
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #0A0602;
   margin: 0 0 0.25rem 0;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 .chart-title-group p {
   font-size: 0.875rem;
-  color: #6B3A1F;
+  color: #3E2008;
   margin: 0;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 .top-days-table {
@@ -352,24 +366,32 @@
 }
 
 .top-days-table thead {
-  background: #F5EDD8;
+  background: linear-gradient(135deg, #C9A84C 0%, #E8C97A 100%);
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.2);
 }
 
 .top-days-table th {
-  padding: 0.75rem 1rem;
+  padding: 1rem;
   text-align: left;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: #6B3A1F;
+  font-weight: 700;
+  color: #0A0602;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 .top-days-table td {
   padding: 1rem;
-  border-bottom: 1px solid #D9C9A8;
+  border-bottom: 2px solid #E8C97A;
   font-size: 0.875rem;
   color: #0A0602;
+  font-weight: 600;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.5), transparent);
+}
+
+.top-days-table tbody tr:hover td {
+  background: linear-gradient(to right, rgba(201, 168, 76, 0.1), transparent);
 }
 
 .top-days-table tbody tr:last-child td {
@@ -387,28 +409,53 @@
 }
 
 .rank-badge.rank-1 {
-  background: rgba(201, 168, 76, 0.2);
-  color: #8B6914;
-  border: 1px solid rgba(201, 168, 76, 0.4);
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #0A0602;
+  border: 2px solid #FFD700;
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4), 0 0 20px rgba(255, 215, 0, 0.3);
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 .rank-badge.rank-2 {
-  background: rgba(232, 201, 122, 0.2);
-  color: #C9A84C;
-  border: 1px solid rgba(232, 201, 122, 0.4);
+  background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);
+  color: #ffffff;
+  border: 2px solid #C0C0C0;
+  box-shadow: 0 4px 12px rgba(192, 192, 192, 0.4), 0 0 20px rgba(192, 192, 192, 0.3);
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .rank-badge.rank-3 {
-  background: rgba(156, 107, 60, 0.2);
-  color: #6B3A1F;
-  border: 1px solid rgba(156, 107, 60, 0.4);
+  background: linear-gradient(135deg, #CD7F32 0%, #B87333 100%);
+  color: #ffffff;
+  border: 2px solid #CD7F32;
+  box-shadow: 0 4px 12px rgba(205, 127, 50, 0.4), 0 0 20px rgba(205, 127, 50, 0.3);
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .rank-badge.rank-4,
 .rank-badge.rank-5 {
-  background: rgba(107, 58, 31, 0.1);
-  color: #6B3A1F;
-  border: 1px solid rgba(107, 58, 31, 0.3);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 2px solid #10b981;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.rank-badge.rank-6,
+.rank-badge.rank-7,
+.rank-badge.rank-8,
+.rank-badge.rank-9,
+.rank-badge.rank-10 {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: 2px solid #6366f1;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 1024px) {

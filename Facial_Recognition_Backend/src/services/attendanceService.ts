@@ -1,6 +1,7 @@
 import { AttendanceModel } from '../models/attendanceModel.js';
 import { CreateAttendanceRequest } from '../types/attendanceEntity.js';
 import { NotificationService } from './notificationService.js';
+import { query } from '../db/index.js';
 import pdfmake from 'pdfmake';
 
 export const AttendanceService = {
@@ -310,11 +311,43 @@ export const AttendanceService = {
   },
 
   getUserStats: async (userId: number) => {
+    // First, determine the user's type by checking which table they exist in
+    let userType: 'college' | 'shs' | 'faculty' | 'guest' = 'college';
+    
+    try {
+      // Check college users
+      const collegeUser = await query('SELECT id FROM users WHERE id = $1', [userId]);
+      if (collegeUser.rows.length > 0) {
+        userType = 'college';
+      } else {
+        // Check SHS users
+        const shsUser = await query('SELECT id FROM shs_users WHERE id = $1', [userId]);
+        if (shsUser.rows.length > 0) {
+          userType = 'shs';
+        } else {
+          // Check faculty users
+          const facultyUser = await query('SELECT id FROM faculty_users WHERE id = $1', [userId]);
+          if (facultyUser.rows.length > 0) {
+            userType = 'faculty';
+          } else {
+            // Check guests
+            const guest = await query('SELECT id FROM guests WHERE id = $1', [userId]);
+            if (guest.rows.length > 0) {
+              userType = 'guest';
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error determining user type:', error);
+      // Default to college if we can't determine
+      userType = 'college';
+    }
+    
     // Use SQL aggregation instead of fetching 10,000 rows
     const dbStats = await AttendanceModel.getUserAggregatedStats(userId);
     
     const presentDays = parseInt(dbStats.total_days as any) || 0;
-    const timeIns = parseInt(dbStats.time_ins as any) || 0;
     
     // Calculate attendance rate (assuming 20 working days per month)
     const totalExpectedDays = 20;
@@ -326,7 +359,7 @@ export const AttendanceService = {
     startOfWeek.setDate(now.getDate() - now.getDay());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
-    const weekRecords = await AttendanceModel.getUserAttendanceHistory(userId, '', 100);
+    const weekRecords = await AttendanceModel.getUserAttendanceHistory(userId, userType, 100);
     const thisWeekPresent = weekRecords.filter(a => 
       a.attendance_type === 'time-in' && new Date(a.timestamp) >= startOfWeek
     ).length;

@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
-import { Home, BarChart3, FileText, Users, GraduationCap, UserCheck, UserPlus, Shield, Archive } from 'lucide-react';
+import { Home, BarChart3, FileText, Users, GraduationCap, UserCheck, UserPlus, Shield, Archive, BookOpen, Building2 } from 'lucide-react';
 import DashboardLayout from '../../components/DashboardLayout';
 import Dashboard from './Dashboard';
 import AttendanceOverview from './AttendanceOverview';
@@ -9,6 +9,9 @@ import ShsManagement from './ShsManagement';
 import FacultyManagement from './FacultyManagement';
 import GuestsManagement from './GuestsManagement';
 import ModeratorsManagement from './ModeratorsManagement';
+import CoursesManagement from './CoursesManagement';
+import StrandsManagement from './StrandsManagement';
+import DepartmentsManagement from './DepartmentsManagement';
 import Archives from './Archives';
 
 const AdminDashboard = () => {
@@ -21,6 +24,10 @@ const AdminDashboard = () => {
     { path: '/admin/shs', label: 'SHS', icon: <GraduationCap size={20} />, section: 'GROUPS' },
     { path: '/admin/faculty', label: 'Faculty', icon: <UserCheck size={20} />, section: 'GROUPS' },
     { path: '/admin/guests', label: 'Guests', icon: <UserPlus size={20} />, section: 'GROUPS' },
+    
+    { path: '/admin/courses', label: 'Courses', icon: <BookOpen size={20} />, section: 'METADATA' },
+    { path: '/admin/strands', label: 'Strands', icon: <GraduationCap size={20} />, section: 'METADATA' },
+    { path: '/admin/departments', label: 'Departments', icon: <Building2 size={20} />, section: 'METADATA' },
     
     { path: '/admin/moderators', label: 'Moderators', icon: <Shield size={20} />, section: 'ADMIN' },
     { path: '/admin/archives', label: 'Archives', icon: <Archive size={20} />, section: 'ADMIN' },
@@ -36,6 +43,9 @@ const AdminDashboard = () => {
         <Route path="shs" element={<ShsManagement />} />
         <Route path="faculty" element={<FacultyManagement />} />
         <Route path="guests" element={<GuestsManagement />} />
+        <Route path="courses" element={<CoursesManagement />} />
+        <Route path="strands" element={<StrandsManagement />} />
+        <Route path="departments" element={<DepartmentsManagement />} />
         <Route path="moderators" element={<ModeratorsManagement />} />
         <Route path="archives" element={<Archives />} />
       </Routes>
