@@ -11,7 +11,9 @@ A high-performance, automated attendance tracking system leveraging state-of-the
 - **Distance-Based Anti-Spoofing**: Dynamic face size thresholds (60x60 min) inherently reject distant spoof attempts while ensuring high-quality face captures.
 - **State-Based Attendance Validation**: Enforces strict Time-In/Time-Out loops, actively preventing redundant attendance logs.
 - **Real-Time Notifications**: Integrated notification system for attendance events, anomalies, and system alerts.
+- **Security Alerts**: Automated detection and logging of suspicious activities with severity-based classification.
 - **Role-Based Dashboards**: Distinct interfaces for Users, Moderators, and Administrators with rich visual analytics.
+- **Metadata Management**: Full CRUD operations for courses, strands, and departments with soft enable/disable functionality.
 - **Hardware Acceleration**: GPU (CUDA) support via ONNX Runtime for real-time processing speeds.
 
 ## Technology Stack
@@ -157,6 +159,7 @@ The system recently underwent a major architectural transition from legacy model
 4. **Query Safety**: Hard `LIMIT 10000` cap on all list queries to prevent full-table scans.
 5. **Consolidated User Lookups**: Single `UNION ALL` query replaces 4 sequential table scans in the recognition logger.
 6. **Pool Resilience**: Idle pool errors no longer crash the server — reconnection is handled gracefully.
+7. **Metadata Soft Delete**: Added `is_active` boolean field to courses, strands, and departments for soft enable/disable functionality (migration `011`).
 
 ### Camera Pipeline Optimization (May 2026)
 
@@ -284,10 +287,29 @@ FacialRecognitionCapstone/
 - `PUT /api/notifications/:id/read` - Mark notification as read
 - `PUT /api/notifications/read-all` - Mark all notifications as read
 
+### Security Alerts
+- `GET /api/security-alerts` - Get security alerts (admin/moderator only)
+- `GET /api/security-alerts/:id` - Get specific security alert
+- `POST /api/security-alerts` - Create security alert (system/admin)
+- `PUT /api/security-alerts/:id/resolve` - Resolve security alert (admin only)
+- `DELETE /api/security-alerts/:id` - Delete security alert (admin only)
+
 ### Metadata
-- `GET /api/metadata/courses` - Get all courses
-- `GET /api/metadata/strands` - Get all strands
-- `GET /api/metadata/departments` - Get all departments
+- `GET /api/metadata/courses` - Get all courses (with optional `includeInactive` query param)
+- `POST /api/metadata/courses` - Create new course (admin only)
+- `PUT /api/metadata/courses/:id` - Update course (admin only)
+- `PATCH /api/metadata/courses/:id/toggle-status` - Toggle course active status (admin only)
+- `DELETE /api/metadata/courses/:id` - Delete course (admin only)
+- `GET /api/metadata/strands` - Get all strands (with optional `includeInactive` query param)
+- `POST /api/metadata/strands` - Create new strand (admin only)
+- `PUT /api/metadata/strands/:id` - Update strand (admin only)
+- `PATCH /api/metadata/strands/:id/toggle-status` - Toggle strand active status (admin only)
+- `DELETE /api/metadata/strands/:id` - Delete strand (admin only)
+- `GET /api/metadata/departments` - Get all departments (with optional `includeInactive` query param)
+- `POST /api/metadata/departments` - Create new department (admin only)
+- `PUT /api/metadata/departments/:id` - Update department (admin only)
+- `PATCH /api/metadata/departments/:id/toggle-status` - Toggle department active status (admin only)
+- `DELETE /api/metadata/departments/:id` - Delete department (admin only)
 - `GET /api/metadata/years` - Get all year levels
 - `GET /api/metadata/grades` - Get all grade levels
 
