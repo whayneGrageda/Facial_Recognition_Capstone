@@ -21,7 +21,7 @@ class LivenessDetector:
             import onnxruntime as ort
             providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
             self.session = ort.InferenceSession(self.model_path, providers=providers)
-            
+
             # Get input/output names
             self.input_name = self.session.get_inputs()[0].name
             self.output_name = self.session.get_outputs()[0].name
@@ -85,22 +85,22 @@ class LivenessDetector:
 
             # Resize to model input size (80x80)
             resized = cv2.resize(crop, (80, 80))
-            
+
             # Convert to float32 and normalize if necessary (ONNX model specifics)
             # MiniFASNet expected input: [1, 3, 80, 80]
             # No explicit mean/std usually required if model has BN, but let's do standard RGB
             # Assuming Yakhyo's ONNX expects standard float32 normalized
             blob = cv2.dnn.blobFromImage(resized, 1.0, (80, 80), (0, 0, 0), swapRB=True, crop=False)
-            
+
             # Run inference
             outputs = self.session.run([self.output_name], {self.input_name: blob})
-            
+
             # Output is typically shape [1, 3] or [1, 2]. Yakhyo's outputs [1, 2] usually (0: spoof, 1: real) or [1, 3].
             # Let's apply softmax
             preds = outputs[0][0]
             exp_preds = np.exp(preds - np.max(preds))
             probs = exp_preds / exp_preds.sum()
-            
+
             # Usually, the class index for 'real' is 1 (if 2 classes) or 1 (if 3 classes: 0=spoof, 1=real, 2=spoof)
             # We'll check the argmax or the prob of real class.
             if len(probs) == 3:
@@ -109,7 +109,7 @@ class LivenessDetector:
             else:
                 # 0: Fake, 1: Real
                 liveness_score = float(probs[1])
-            
+
             is_live = liveness_score >= self.threshold
             return is_live, liveness_score
 

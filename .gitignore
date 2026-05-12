@@ -51,3 +51,7 @@ yarn-error.log*
 *.pkl
 Facial_Recognition_Logic/models/
 Facial_Recognition_Logic/gfpgan/weights/
+
+# Face recognition data
+Facial_Recognition_Logic/known_faces/
+Facial_Recognition_Logic/security_alerts/

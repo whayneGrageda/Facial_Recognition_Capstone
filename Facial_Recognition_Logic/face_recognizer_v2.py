@@ -441,8 +441,19 @@ class FaceRecognizer:
 
             # Match against known faces
             name, confidence = self._match_face(feature)
-            
+
+            # Apply liveness detection if enabled
             bbox = (top, right, bottom, left)
+            is_live = True
+
+            # Only run liveness if the person is recognized or if we want to run it on everyone.
+            # Running it only on recognized faces saves compute.
+            if self.enable_liveness and name != "Unknown":
+                # We need the original unresized frame here. wait, `frame` is passed to recognize_faces.
+                is_live, liveness_score = self.liveness_detector.is_live(frame, bbox)
+                if not is_live:
+                    name = "SPOOF"
+                    confidence = 1.0 - liveness_score
 
             # Apply temporal voting for stability
             voted_name, voted_conf, status = self.voter.vote(bbox, name, confidence)
