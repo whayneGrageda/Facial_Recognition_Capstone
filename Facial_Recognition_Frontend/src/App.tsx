@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
 // Shared Pages
+import LandingPage from './pages/shared/LandingPage';
 import LoginPage from './pages/shared/LoginPage';
 import ForgotPasswordPage from './pages/shared/ForgotPasswordPage';
 import RegisterPage from './pages/shared/RegisterPage';
@@ -76,8 +77,8 @@ function App() {
       />
 
       {/* Default Route */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

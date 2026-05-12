@@ -124,12 +124,6 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-page">
-      {/* Hero Welcome Section */}
-      <div className="hero-welcome">
-        <h1>Welcome back, {user?.name || 'admin'}</h1>
-        <p>Here's what's happening with your system today</p>
-      </div>
-
       {/* Content Grid */}
       <div className="content-grid">
         {/* Live Attendance */}

@@ -11,27 +11,12 @@
 }
 
 /* Dashboard-specific animations */
-.dashboard-page .hero-welcome {
-  animation: fadeInScale 0.6s ease-out;
-}
-
 .dashboard-page .content-card:nth-child(1) {
   animation: slideInLeft 0.7s ease-out 0.3s both;
 }
 
 .dashboard-page .content-card:nth-child(2) {
   animation: slideInRight 0.7s ease-out 0.3s both;
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 @keyframes slideInLeft {
@@ -71,53 +56,6 @@
       opacity: 1;
       transform: translateY(0);
     }
-  }
-}
-
-/* ===================================
-   HERO WELCOME SECTION
-   =================================== */
-
-.hero-welcome {
-  text-align: center;
-  padding: 2.5rem 2rem;
-  margin-bottom: 2rem;
-  background: linear-gradient(135deg, #F5EDD8 0%, #ffffff 100%);
-  border: 2px solid #E8C97A;
-  border-radius: 1rem;
-  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.15);
-}
-
-.hero-welcome h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #0A0602;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.2;
-  background: linear-gradient(135deg, #C9A84C 0%, #8B6914 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.hero-welcome p {
-  font-size: 1rem;
-  color: #6B3A1F;
-  margin: 0;
-  font-weight: 500;
-}
-
-@media (max-width: 768px) {
-  .hero-welcome {
-    padding: 2rem 1.5rem;
-  }
-  
-  .hero-welcome h1 {
-    font-size: 1.875rem;
-  }
-  
-  .hero-welcome p {
-    font-size: 1rem;
   }
 }
 

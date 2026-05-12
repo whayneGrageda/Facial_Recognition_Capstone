@@ -166,7 +166,7 @@
 .notifications-page,
 .attendance-history-page,
 .user-dashboard,
-[class$="-page"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]),
+[class$="-page"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]):not(.login-page),
 [class$="-overview"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]),
 [class$="-management"]:not([class*="sidebar"]):not([class*="header"]):not([class*="navbar"]) {
   animation: pageSlideUp 0.5s ease-out;
