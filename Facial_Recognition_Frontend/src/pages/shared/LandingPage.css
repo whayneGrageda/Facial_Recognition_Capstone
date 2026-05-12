@@ -155,6 +155,28 @@
   background-size: cover;
   background-position: 65% center;
   background-repeat: no-repeat;
+  animation: slideInFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.landing-hero-nodes-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  animation: slideInFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes slideInFade {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .landing-hero-overlay-dark {
@@ -167,13 +189,6 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(to right, var(--background-dark), rgba(62, 32, 8, 0.4), transparent);
-}
-
-.landing-hero-nodes-container {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 20;
 }
 
 .landing-hero-content-container {
