@@ -407,7 +407,7 @@
   background: none;
   border: none;
   color: var(--primary-600);
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   font-size: 0.95rem;
   text-decoration: none;
@@ -417,6 +417,7 @@
   text-align: center;
   margin: 0 auto;
   width: fit-content;
+  font-family: var(--font-primary);
 }
 
 .forgot-password-link::after {
