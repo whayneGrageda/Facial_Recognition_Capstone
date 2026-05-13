@@ -156,14 +156,14 @@ export const AttendanceModel = {
    * Returns counts grouped by attendance_type and user_type in a single query.
    */
   getAggregatedStats: async (date?: string): Promise<{ attendance_type: string; user_type: string; count: number }[]> => {
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || new Date().toLocaleString('en-CA', { timeZone: 'Asia/Manila' }).split(',')[0];
     const sql = `
       SELECT 
         attendance_type,
         user_type,
         COUNT(*) as count
       FROM attendance
-      WHERE timestamp >= $1::date AND timestamp < ($1::date + INTERVAL '1 day')
+      WHERE (timestamp AT TIME ZONE 'Asia/Manila')::date = $1::date
       GROUP BY attendance_type, user_type
     `;
     const { rows } = await query(sql, [targetDate]);
@@ -227,12 +227,12 @@ export const AttendanceModel = {
   getMonthlyTrends: async (): Promise<any[]> => {
     const sql = `
       SELECT 
-        TO_CHAR(timestamp, 'Mon') as month,
+        TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'Mon') as month,
         COUNT(*) as count
       FROM attendance
       WHERE timestamp >= NOW() - INTERVAL '12 months'
-      GROUP BY TO_CHAR(timestamp, 'Mon'), DATE_TRUNC('month', timestamp)
-      ORDER BY DATE_TRUNC('month', timestamp)
+      GROUP BY TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'Mon'), DATE_TRUNC('month', timestamp AT TIME ZONE 'Asia/Manila')
+      ORDER BY DATE_TRUNC('month', timestamp AT TIME ZONE 'Asia/Manila')
     `;
     const { rows } = await query(sql);
     return rows;
@@ -241,7 +241,7 @@ export const AttendanceModel = {
   getDailyTrends: async (): Promise<any[]> => {
     const sql = `
       SELECT 
-        TO_CHAR(timestamp, 'YYYY-MM-DD') as date,
+        TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD') as date,
         COUNT(*) as count
       FROM attendance
       WHERE timestamp >= NOW() - INTERVAL '30 days'
@@ -255,7 +255,7 @@ export const AttendanceModel = {
   getPeakHours: async (): Promise<any[]> => {
     const sql = `
       SELECT 
-        TO_CHAR(timestamp, 'HH24:00') as hour,
+        TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'HH24:00') as hour,
         COUNT(*) as count
       FROM attendance
       WHERE timestamp >= NOW() - INTERVAL '30 days'
@@ -283,14 +283,14 @@ export const AttendanceModel = {
     // for the last 90 days, time-in records only
     const sql = `
       SELECT
-        EXTRACT(DOW FROM timestamp)::int AS dow,
-        EXTRACT(HOUR FROM timestamp)::int AS hour,
+        EXTRACT(DOW FROM timestamp AT TIME ZONE 'Asia/Manila')::int AS dow,
+        EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila')::int AS hour,
         COUNT(*) AS count
       FROM attendance
       WHERE attendance_type = 'time-in'
         AND timestamp >= NOW() - INTERVAL '90 days'
-        AND EXTRACT(DOW FROM timestamp) BETWEEN 1 AND 5
-        AND EXTRACT(HOUR FROM timestamp) BETWEEN 8 AND 19
+        AND EXTRACT(DOW FROM timestamp AT TIME ZONE 'Asia/Manila') BETWEEN 1 AND 5
+        AND EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') BETWEEN 8 AND 19
       GROUP BY dow, hour
       ORDER BY dow, hour
     `;
