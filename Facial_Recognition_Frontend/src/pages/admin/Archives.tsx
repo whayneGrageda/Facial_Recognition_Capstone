@@ -226,6 +226,12 @@ const Archives = () => {
 
   return (
     <div className="archives-page">
+      {/* Page Title */}
+      <div className="page-title-block">
+        <h2>Archives</h2>
+        <p className="page-subtitle">Manage archived users — restore or permanently delete records.</p>
+      </div>
+
       {/* Header */}
       <div className="archives-header">
         <div className="status-indicator">

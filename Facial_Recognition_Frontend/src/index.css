@@ -211,7 +211,7 @@ body {
   font-size: 1rem;
   line-height: 1.6;
   color: var(--text-primary);
-  background-color: #F5EDD8;  /* cream background */
+  background-color: #f9f9f9;
   min-height: 100vh;
 }
 
@@ -599,8 +599,30 @@ a:hover {
 }
 
 /* ===================================
-   SCROLLBAR STYLES
+   PAGE TITLE + SUBTITLE — shared across all pages
    =================================== */
+
+.page-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0;
+}
+
+.page-title-block h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1c1c;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 0.9375rem;
+  color: #7e7665;
+  margin: 0;
+  font-weight: 400;
+}
 
 ::-webkit-scrollbar {
   width: 8px;

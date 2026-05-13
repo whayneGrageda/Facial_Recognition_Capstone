@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Calendar, Clock, Filter, Timer } from 'lucide-react';
+import { Calendar, Clock, Filter, Timer, CheckCircle, AlertCircle } from 'lucide-react';
 import { attendanceService } from '../../services/attendanceService';
 import type { Attendance } from '../../types';
 import './AttendanceHistory.css';
@@ -28,64 +28,42 @@ const AttendanceHistory = () => {
 
   const fetchAttendance = async () => {
     if (!user?.id) return;
-    
     setLoading(true);
     try {
-      const filters = {
+      const response = await attendanceService.getAll(1000, 0, {
         user_id: user.id,
         user_type: user.userType,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
-      };
-
-      // Fetch all records (no pagination on API call, we'll paginate the daily summary)
-      const response = await attendanceService.getAll(1000, 0, filters);
+      });
       const records = response.attendance || [];
-      
-      // Group by date and get first time-in and last time-out per day
+
       const dailyMap = new Map<string, DailyAttendance>();
-      
       records.forEach((record: Attendance) => {
         const date = new Date(record.timestamp).toISOString().split('T')[0];
         const time = new Date(record.timestamp);
-        
-        if (!dailyMap.has(date)) {
-          dailyMap.set(date, { date });
-        }
-        
+        if (!dailyMap.has(date)) dailyMap.set(date, { date });
         const daily = dailyMap.get(date)!;
-        
         if (record.attendance_type === 'time-in') {
-          if (!daily.timeIn || time < new Date(daily.timeIn)) {
-            daily.timeIn = time.toISOString();
-          }
+          if (!daily.timeIn || time < new Date(daily.timeIn)) daily.timeIn = time.toISOString();
         } else if (record.attendance_type === 'time-out') {
-          if (!daily.timeOut || time > new Date(daily.timeOut)) {
-            daily.timeOut = time.toISOString();
-          }
+          if (!daily.timeOut || time > new Date(daily.timeOut)) daily.timeOut = time.toISOString();
         }
       });
-      
-      // Calculate duration and convert to array
+
       const dailyArray = Array.from(dailyMap.values()).map(day => {
         if (day.timeIn && day.timeOut) {
-          const timeInDate = new Date(day.timeIn);
-          const timeOutDate = new Date(day.timeOut);
-          const diffMs = timeOutDate.getTime() - timeInDate.getTime();
-          const hours = Math.floor(diffMs / (1000 * 60 * 60));
-          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-          day.duration = `${hours}h ${minutes}m`;
+          const diff = new Date(day.timeOut).getTime() - new Date(day.timeIn).getTime();
+          const h = Math.floor(diff / 3600000);
+          const m = Math.floor((diff % 3600000) / 60000);
+          day.duration = `${h}h ${m}m`;
         }
         return day;
       }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+
       setTotalCount(dailyArray.length);
-      
-      // Paginate the daily summary
-      const startIdx = (currentPage - 1) * recordsPerPage;
-      const endIdx = startIdx + recordsPerPage;
-      setDailyAttendance(dailyArray.slice(startIdx, endIdx));
-      
+      const start = (currentPage - 1) * recordsPerPage;
+      setDailyAttendance(dailyArray.slice(start, start + recordsPerPage));
     } catch (error) {
       console.error('Error fetching attendance:', error);
       setDailyAttendance([]);
@@ -100,67 +78,48 @@ const AttendanceHistory = () => {
     setCurrentPage(1);
   };
 
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
-  const formatTime = (date?: Date | string) => {
-    if (!date) return '--:--';
-    return new Date(date).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatTime = (d?: string) =>
+    d ? new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
+  const getStatus = (day: DailyAttendance) => {
+    if (day.timeIn && day.timeOut) return 'complete';
+    if (day.timeIn) return 'partial';
+    return 'absent';
   };
 
   const totalPages = Math.ceil(totalCount / recordsPerPage);
-
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
+  const goToPage = (p: number) => setCurrentPage(Math.max(1, Math.min(p, totalPages)));
 
   return (
     <div className="attendance-history-page">
-      {/* Header */}
-      <div className="history-header">
+
+      {/* Page Title */}
+      <div className="page-title-block">
         <h2>Attendance History</h2>
+        <p className="page-subtitle">Your personal attendance records and session durations.</p>
       </div>
 
-      {/* Filters */}
-      <div className="filters-section">
-        <div className="filter-inputs">
-          <div className="filter-input-group">
-            <label>Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="date-input"
-            />
-          </div>
-
-          <div className="filter-input-group">
-            <label>End Date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="date-input"
-            />
-          </div>
-
-          <button onClick={clearFilters} className="btn-clear-filters">
-            <Filter size={16} />
-            Clear Filters
-          </button>
+      {/* Filter Card */}
+      <div className="ah-glass history-filter-card">
+        <div className="filter-field">
+          <label>Start Date</label>
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
         </div>
+        <div className="filter-field">
+          <label>End Date</label>
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+        </div>
+        <button className="btn-clear" onClick={clearFilters}>
+          <Filter size={15} />
+          Clear Filters
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="history-table-container">
+      {/* Table Card */}
+      <div className="ah-glass history-table-card">
         <table className="history-table">
           <thead>
             <tr>
@@ -168,44 +127,54 @@ const AttendanceHistory = () => {
               <th>Time In</th>
               <th>Time Out</th>
               <th>Duration</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={4} className="loading-cell">Loading...</td>
-              </tr>
+              <tr><td colSpan={5} className="table-placeholder">Loading records…</td></tr>
             ) : dailyAttendance.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="empty-cell">No attendance records found</td>
-              </tr>
+              <tr><td colSpan={5} className="table-placeholder">No attendance records found</td></tr>
             ) : (
-              dailyAttendance.map((day) => {
+              dailyAttendance.map(day => {
+                const status = getStatus(day);
                 return (
                   <tr key={day.date}>
                     <td>
-                      <div className="cell-with-icon">
-                        <Calendar size={16} />
+                      <span className="cell-icon-wrap">
+                        <Calendar size={15} />
                         {formatDate(day.date)}
-                      </div>
+                      </span>
                     </td>
                     <td>
-                      <div className="cell-with-icon">
-                        <Clock size={16} />
+                      <span className="cell-icon-wrap">
+                        <Clock size={15} />
                         {formatTime(day.timeIn)}
-                      </div>
+                      </span>
                     </td>
                     <td>
-                      <div className="cell-with-icon">
-                        <Clock size={16} />
+                      <span className="cell-icon-wrap">
+                        <Clock size={15} />
                         {formatTime(day.timeOut)}
-                      </div>
+                      </span>
                     </td>
                     <td>
-                      <div className="cell-with-icon">
-                        <Timer size={16} />
-                        {day.duration || '--'}
-                      </div>
+                      {day.duration ? (
+                        <span className="duration-chip">
+                          <Timer size={13} />
+                          {day.duration}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#9C6B3C', fontSize: '0.875rem' }}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`status-badge ${status}`}>
+                        {status === 'complete' && <CheckCircle size={12} />}
+                        {status === 'partial'  && <Clock size={12} />}
+                        {status === 'absent'   && <AlertCircle size={12} />}
+                        {status === 'complete' ? 'Complete' : status === 'partial' ? 'Partial' : 'Absent'}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -217,38 +186,12 @@ const AttendanceHistory = () => {
 
       {/* Pagination */}
       {totalCount > 0 && (
-        <div className="pagination">
-          <button
-            onClick={() => goToPage(1)}
-            disabled={currentPage === 1}
-            className="pagination-btn"
-          >
-            First
-          </button>
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="pagination-btn"
-          >
-            Previous
-          </button>
-          <span className="page-info">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="pagination-btn"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => goToPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="pagination-btn"
-          >
-            Last
-          </button>
+        <div className="history-pagination">
+          <button className="pg-btn" onClick={() => goToPage(1)} disabled={currentPage === 1}>First</button>
+          <button className="pg-btn" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>Previous</button>
+          <span className="pg-info">Page {currentPage} of {totalPages}</span>
+          <button className="pg-btn" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>Next</button>
+          <button className="pg-btn" onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}>Last</button>
         </div>
       )}
     </div>

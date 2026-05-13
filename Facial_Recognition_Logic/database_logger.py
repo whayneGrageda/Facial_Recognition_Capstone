@@ -192,16 +192,16 @@ class DatabaseLogger:
         """
         cursor.execute("""
             SELECT id, 'college' as user_type, name FROM users
-            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
+            WHERE LOWER(regexp_replace(TRIM(name), '\\s+', ' ', 'g')) = LOWER(regexp_replace(TRIM(%s), '\\s+', ' ', 'g')) AND status = 'active'
             UNION ALL
             SELECT id, 'shs', name FROM shs_users
-            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
+            WHERE LOWER(regexp_replace(TRIM(name), '\\s+', ' ', 'g')) = LOWER(regexp_replace(TRIM(%s), '\\s+', ' ', 'g')) AND status = 'active'
             UNION ALL
             SELECT id, 'faculty', name FROM faculty_users
-            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) AND status = 'active'
+            WHERE LOWER(regexp_replace(TRIM(name), '\\s+', ' ', 'g')) = LOWER(regexp_replace(TRIM(%s), '\\s+', ' ', 'g')) AND status = 'active'
             UNION ALL
             SELECT id, 'guest', name FROM guests
-            WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))
+            WHERE LOWER(regexp_replace(TRIM(name), '\\s+', ' ', 'g')) = LOWER(regexp_replace(TRIM(%s), '\\s+', ' ', 'g'))
             LIMIT 1
         """, (identifier, identifier, identifier, identifier))
         

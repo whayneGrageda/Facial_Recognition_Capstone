@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Lock, Mail, Phone, Save } from 'lucide-react';
-import '../admin/Dashboard.css';
+import { User, Lock, Mail, Phone, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import './Settings.css';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -16,24 +16,17 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
-
     try {
-      // API call to update profile (only contact number is editable)
       // await userService.updateProfile({ contact_number: formData.contact_number });
-      
       setMessage({ type: 'success', text: 'Contact number updated successfully!' });
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to update contact number. Please try again.' });
     } finally {
       setLoading(false);
@@ -42,32 +35,21 @@ const Settings = () => {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (formData.newPassword !== formData.confirmPassword) {
       setMessage({ type: 'error', text: 'New passwords do not match!' });
       return;
     }
-
     if (formData.newPassword.length < 6) {
       setMessage({ type: 'error', text: 'Password must be at least 6 characters long!' });
       return;
     }
-
     setLoading(true);
     setMessage(null);
-
     try {
-      // API call to change password
       // await userService.changePassword({ currentPassword: formData.currentPassword, newPassword: formData.newPassword });
-      
       setMessage({ type: 'success', text: 'Password changed successfully!' });
-      setFormData({
-        ...formData,
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-    } catch (error) {
+      setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+    } catch {
       setMessage({ type: 'error', text: 'Failed to change password. Please check your current password.' });
     } finally {
       setLoading(false);
@@ -75,153 +57,142 @@ const Settings = () => {
   };
 
   return (
-    <div className="dashboard-page">
-      <h2 style={{ marginBottom: '2rem', color: 'var(--text-primary)' }}>Account Settings</h2>
+    <div className="settings-page">
 
+      {/* Page Title */}
+      <div className="page-title-block">
+        <h2>Settings</h2>
+        <p className="page-subtitle">Manage your account details and security preferences.</p>
+      </div>
+
+      {/* Alert */}
       {message && (
-        <div
-          style={{
-            padding: '1rem',
-            borderRadius: 'var(--radius-lg)',
-            marginBottom: '1.5rem',
-            background: message.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            color: message.type === 'success' ? '#10b981' : '#ef4444',
-            border: `1px solid ${message.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-          }}
-        >
+        <div className={`settings-alert ${message.type}`}>
+          {message.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
           {message.text}
         </div>
       )}
 
-      {/* Update Profile Information */}
-      <div className="info-card" style={{ marginBottom: '2rem' }}>
-        <div className="info-icon">
-          <User size={24} />
+      {/* Personal Information Card */}
+      <div className="settings-glass">
+        <div className="settings-card-header">
+          <div className="settings-card-icon">
+            <User size={20} />
+          </div>
+          <div>
+            <h3>Personal Information</h3>
+            <p>Update your contact details</p>
+          </div>
         </div>
-        <div className="info-content" style={{ width: '100%' }}>
-          <h3 style={{ marginBottom: '1.5rem' }}>Personal Information</h3>
-          <form onSubmit={handleUpdateProfile}>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                  <User size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Enter your full name"
-                  disabled
-                  style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed', opacity: 0.7 }}
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                  Contact admin to change your name
-                </p>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                  <Mail size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="your.email@example.com"
-                  disabled
-                  style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed', opacity: 0.7 }}
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                  Contact admin to change your email
-                </p>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                  <Phone size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  Contact Number
-                </label>
-                <input
-                  type="tel"
-                  name="contact_number"
-                  value={formData.contact_number}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="+63 XXX XXX XXXX"
-                />
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                <Save size={16} />
-                <span>{loading ? 'Saving...' : 'Save Changes'}</span>
-              </button>
+        <div className="settings-card-body">
+          <form className="settings-form" onSubmit={handleUpdateProfile}>
+
+            <div className="settings-field">
+              <label><User size={14} /> Full Name</label>
+              <input
+                className="settings-input"
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Your full name"
+                disabled
+              />
+              <p className="settings-field-hint">Contact admin to change your name</p>
             </div>
+
+            <div className="settings-field">
+              <label><Mail size={14} /> Email Address</label>
+              <input
+                className="settings-input"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="your.email@example.com"
+                disabled
+              />
+              <p className="settings-field-hint">Contact admin to change your email</p>
+            </div>
+
+            <div className="settings-field">
+              <label><Phone size={14} /> Contact Number</label>
+              <input
+                className="settings-input"
+                type="tel"
+                name="contact_number"
+                value={formData.contact_number}
+                onChange={handleChange}
+                placeholder="+63 XXX XXX XXXX"
+              />
+            </div>
+
+            <button type="submit" className="btn-settings-save" disabled={loading}>
+              <Save size={16} />
+              {loading ? 'Saving…' : 'Save Changes'}
+            </button>
           </form>
         </div>
       </div>
 
-      {/* Change Password */}
-      <div className="info-card">
-        <div className="info-icon">
-          <Lock size={24} />
+      {/* Change Password Card */}
+      <div className="settings-glass">
+        <div className="settings-card-header">
+          <div className="settings-card-icon">
+            <Lock size={20} />
+          </div>
+          <div>
+            <h3>Change Password</h3>
+            <p>Keep your account secure</p>
+          </div>
         </div>
-        <div className="info-content" style={{ width: '100%' }}>
-          <h3 style={{ marginBottom: '1.5rem' }}>Change Password</h3>
-          <form onSubmit={handleChangePassword}>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                  <Lock size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  name="currentPassword"
-                  value={formData.currentPassword}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Enter current password"
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                  <Lock size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  name="newPassword"
-                  value={formData.newPassword}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Enter new password"
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                  <Lock size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Confirm new password"
-                />
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                <Lock size={16} />
-                <span>{loading ? 'Changing...' : 'Change Password'}</span>
-              </button>
+        <div className="settings-card-body">
+          <form className="settings-form" onSubmit={handleChangePassword}>
+
+            <div className="settings-field">
+              <label><Lock size={14} /> Current Password</label>
+              <input
+                className="settings-input"
+                type="password"
+                name="currentPassword"
+                value={formData.currentPassword}
+                onChange={handleChange}
+                placeholder="Enter current password"
+              />
             </div>
+
+            <div className="settings-field">
+              <label><Lock size={14} /> New Password</label>
+              <input
+                className="settings-input"
+                type="password"
+                name="newPassword"
+                value={formData.newPassword}
+                onChange={handleChange}
+                placeholder="Enter new password"
+              />
+            </div>
+
+            <div className="settings-field">
+              <label><Lock size={14} /> Confirm New Password</label>
+              <input
+                className="settings-input"
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm new password"
+              />
+            </div>
+
+            <button type="submit" className="btn-settings-save" disabled={loading}>
+              <Lock size={16} />
+              {loading ? 'Changing…' : 'Change Password'}
+            </button>
           </form>
         </div>
       </div>
+
     </div>
   );
 };

@@ -722,8 +722,25 @@ const UserManagement = ({ userType }: UserManagementProps) => {
     }, 2000);
   };
 
+  const getPageTitle = () => {
+    switch (userType) {
+      case 'college':    return { title: 'College Users',    subtitle: 'Manage college student accounts and face profiles.' };
+      case 'shs':        return { title: 'SHS Users',        subtitle: 'Manage Senior High School student accounts and face profiles.' };
+      case 'faculty':    return { title: 'Faculty Users',    subtitle: 'Manage faculty member accounts and face profiles.' };
+      case 'guests':     return { title: 'Guests',           subtitle: 'Manage guest visitor accounts and access records.' };
+      case 'moderators': return { title: 'Moderators',       subtitle: 'Manage moderator accounts and system access.' };
+      default:           return { title: 'User Management',  subtitle: 'Manage user accounts and face profiles.' };
+    }
+  };
+
   return (
     <div className="user-management">
+      {/* Page Title */}
+      <div className="page-title-block">
+        <h2>{getPageTitle().title}</h2>
+        <p className="page-subtitle">{getPageTitle().subtitle}</p>
+      </div>
+
       {/* Header with Actions */}
       <div className="management-header">
         <div className="status-indicator">

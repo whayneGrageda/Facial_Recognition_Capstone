@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { Bell, CheckCircle, AlertCircle, Info, X, CheckCheck } from 'lucide-react';
 import { notificationService, Notification } from '../../services/notificationService';
 import './Notifications.css';
 
@@ -26,11 +26,7 @@ const Notifications = () => {
   const markAsRead = async (id: number) => {
     try {
       await notificationService.markAsRead(id);
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === id ? { ...notif, is_read: true } : notif
-        )
-      );
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -39,7 +35,7 @@ const Notifications = () => {
   const deleteNotification = async (id: number) => {
     try {
       await notificationService.delete(id);
-      setNotifications(prev => prev.filter(notif => notif.id !== id));
+      setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -48,66 +44,72 @@ const Notifications = () => {
   const markAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead();
-      setNotifications(prev =>
-        prev.map(notif => ({ ...notif, is_read: true }))
-      );
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
   };
 
-  const getIcon = (message: string) => {
-    if (message.toLowerCase().includes('success') || message.toLowerCase().includes('recorded')) {
-      return <CheckCircle size={20} />;
-    } else if (message.toLowerCase().includes('late') || message.toLowerCase().includes('warning')) {
-      return <AlertCircle size={20} />;
-    } else {
-      return <Info size={20} />;
-    }
+  const getType = (msg: string): 'success' | 'warning' | 'info' => {
+    const m = msg.toLowerCase();
+    if (m.includes('success') || m.includes('recorded')) return 'success';
+    if (m.includes('late') || m.includes('warning'))     return 'warning';
+    return 'info';
   };
 
-  const getNotificationType = (message: string): 'success' | 'warning' | 'info' => {
-    if (message.toLowerCase().includes('success') || message.toLowerCase().includes('recorded')) {
-      return 'success';
-    } else if (message.toLowerCase().includes('late') || message.toLowerCase().includes('warning')) {
-      return 'warning';
-    } else {
-      return 'info';
-    }
+  const getIcon = (msg: string) => {
+    const t = getType(msg);
+    if (t === 'success') return <CheckCircle size={20} />;
+    if (t === 'warning') return <AlertCircle size={20} />;
+    return <Info size={20} />;
   };
 
   const formatTimestamp = (date: Date | string) => {
-    const now = new Date();
-    const notifDate = new Date(date);
-    const diff = now.getTime() - notifDate.getTime();
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (hours < 1) return 'Just now';
-    if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return 'Yesterday';
-    return `${days} days ago`;
+    const diff = Date.now() - new Date(date).getTime();
+    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / 86400000);
+    if (h < 1)  return 'Just now';
+    if (h < 24) return `${h}h ago`;
+    if (d === 1) return 'Yesterday';
+    return `${d} days ago`;
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <div className="notifications-page">
+
       {/* Header */}
       <div className="notifications-header">
-        <h2>Notifications</h2>
+        <div className="page-title-block">
+          <h2>Notifications</h2>
+          <p className="page-subtitle">Stay updated on your attendance and system alerts.</p>
+        </div>
         {unreadCount > 0 && (
-          <button onClick={markAllAsRead} className="btn-mark-all">
+          <button className="btn-mark-all" onClick={markAllAsRead}>
+            <CheckCheck size={15} />
             Mark all as read
           </button>
         )}
       </div>
 
-      {/* Notifications List */}
+      {/* Unread Banner */}
+      {unreadCount > 0 && (
+        <div className="unread-banner">
+          <div className="unread-banner-icon">
+            <Bell size={20} />
+          </div>
+          <span className="unread-banner-text">
+            You have <span>{unreadCount} unread</span> notification{unreadCount > 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
+
+      {/* List */}
       <div className="notifications-list">
         {loading ? (
           <div className="empty-state">
-            <p>Loading notifications...</p>
+            <p>Loading notifications…</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="empty-state">
@@ -115,33 +117,30 @@ const Notifications = () => {
             <p>No notifications at the moment</p>
           </div>
         ) : (
-          notifications.map((notification) => (
+          notifications.map(notif => (
             <div
-              key={notification.id}
-              className={`notification-card notification-${getNotificationType(notification.message)} ${notification.is_read ? 'read' : 'unread'}`}
-              onClick={() => !notification.is_read && markAsRead(notification.id)}
-              style={{ cursor: notification.is_read ? 'default' : 'pointer' }}
+              key={notif.id}
+              className={`notification-card notification-${getType(notif.message)} ${notif.is_read ? 'read' : 'unread'}`}
+              onClick={() => !notif.is_read && markAsRead(notif.id)}
             >
               <div className="notification-icon">
-                {getIcon(notification.message)}
+                {getIcon(notif.message)}
               </div>
               <div className="notification-content">
                 <div className="notification-header">
                   <h4>Notification</h4>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteNotification(notification.id);
-                    }}
                     className="btn-delete"
+                    onClick={e => { e.stopPropagation(); deleteNotification(notif.id); }}
                     aria-label="Delete notification"
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
                 </div>
-                <p className="notification-message">{notification.message}</p>
+                <p className="notification-message">{notif.message}</p>
                 <div className="notification-footer">
-                  <span className="notification-time">{formatTimestamp(notification.created_at)}</span>
+                  <span className="notification-time">{formatTimestamp(notif.created_at)}</span>
+                  {!notif.is_read && <span className="unread-dot" />}
                 </div>
               </div>
             </div>

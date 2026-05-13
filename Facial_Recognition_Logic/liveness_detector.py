@@ -44,10 +44,11 @@ class LivenessDetector:
             except Exception as e:
                 print(f"[Liveness] Error downloading model: {e}")
 
-    def get_crop(self, frame, bbox, scale=2.7):
+    def get_crop(self, frame, bbox, scale=2.0):
         """
         Crop face with context (scale > 1.0 expands the box).
-        MiniFASNet typically uses a scale around 2.7 to 4.0 to see the screen edges if it's a spoof.
+        Reduced from 2.7 to 2.0 to avoid background screens/monitors
+        contaminating the liveness check with false replay-attack signals.
         """
         top, right, bottom, left = bbox
         h, w = bottom - top, right - left
@@ -94,7 +95,7 @@ class LivenessDetector:
                 return False, 0.0
 
             # Skip liveness check if frame is too blurry (prevents false positives)
-            if self._is_blurry(crop, threshold=100.0):
+            if self._is_blurry(crop, threshold=60.0):
                 # Assume live on blurry frames to avoid false SPOOF alerts
                 return True, 0.5
 

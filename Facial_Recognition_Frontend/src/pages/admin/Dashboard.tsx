@@ -1,9 +1,12 @@
-import { 
-  Clock, 
-  AlertTriangle, 
-  Shield, 
+import {
+  Clock,
+  AlertTriangle,
+  Shield,
   LogIn,
-  LogOut
+  LogOut,
+  Users,
+  CalendarCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { securityAlertService, SecurityAlert } from '../../services/securityAlertService';
@@ -11,65 +14,60 @@ import { attendanceService } from '../../services/attendanceService';
 import type { Attendance } from '../../types';
 import './Dashboard.css';
 
+interface AttendanceStats {
+  total: number;
+  timeIn: number;
+  timeOut: number;
+  byUserType: { college: number; shs: number; faculty: number; guest: number };
+}
+
 const Dashboard = () => {
   const [securityAlerts, setSecurityAlerts] = useState<SecurityAlert[]>([]);
   const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
+  const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [newRecordIds, setNewRecordIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const previousIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 5000); // Check every 5 seconds for real-time feel
+    const interval = setInterval(fetchDashboardData, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardData = async () => {
     try {
-      const [alertsResult, recentResult] = await Promise.allSettled([
+      const [alertsResult, recentResult, statsResult] = await Promise.allSettled([
         securityAlertService.getRecentUnresolved(5),
-        attendanceService.getTodayAttendance()
+        attendanceService.getTodayAttendance(),
+        attendanceService.getStats(),
       ]);
-      
-      if (alertsResult.status === 'fulfilled') {
-        setSecurityAlerts(alertsResult.value || []);
-      } else {
-        console.error('Error fetching security alerts:', alertsResult.reason);
-        setSecurityAlerts([]);
-      }
-      
+
+      if (alertsResult.status === 'fulfilled') setSecurityAlerts(alertsResult.value || []);
+      else setSecurityAlerts([]);
+
+      if (statsResult.status === 'fulfilled') setStats(statsResult.value);
+
       if (recentResult.status === 'fulfilled') {
         const newData = recentResult.value || [];
-        
-        // Detect new records
+
         if (previousIdsRef.current.size > 0) {
           const newIds = new Set<number>();
-          newData.forEach((record: Attendance) => {
-            if (!previousIdsRef.current.has(record.id)) {
-              newIds.add(record.id);
-            }
+          newData.forEach((r: Attendance) => {
+            if (!previousIdsRef.current.has(r.id)) newIds.add(r.id);
           });
-          
           if (newIds.size > 0) {
             setNewRecordIds(newIds);
-            // Remove animation class after animation completes
-            setTimeout(() => {
-              setNewRecordIds(new Set());
-            }, 1000);
+            setTimeout(() => setNewRecordIds(new Set()), 1000);
           }
         }
-        
-        // Update previous IDs
+
         previousIdsRef.current = new Set(newData.map((r: Attendance) => r.id));
-        
-        // Sort by timestamp descending (most recent first)
-        const sorted = [...newData].sort((a, b) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        const sorted = [...newData].sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-        
         setRecentAttendance(sorted);
       } else {
-        console.error('Error fetching attendance:', recentResult.reason);
         setRecentAttendance([]);
       }
     } catch (error) {
@@ -88,157 +86,220 @@ const Dashboard = () => {
     }
   };
 
-  const formatTime = (timestamp: Date | string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+  const formatTime = (ts: Date | string) =>
+    new Date(ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+  const getTimeAgo = (ts: Date | string) => {
+    const diff = Date.now() - new Date(ts).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'Just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const attendanceRate = stats
+    ? stats.total > 0 ? Math.round((stats.timeIn / stats.total) * 100) : 0
+    : null;
 
-  const getTimeAgo = (timestamp: Date | string) => {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffMs = now.getTime() - time.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
-  };
+  const totalUsers = stats
+    ? (stats.byUserType.college + stats.byUserType.shs + stats.byUserType.faculty + stats.byUserType.guest)
+    : null;
 
   return (
     <div className="dashboard-page">
-      {/* Content Grid */}
-      <div className="content-grid">
-        {/* Live Attendance */}
-        <div className="content-card">
+
+      {/* ── Stat Cards ── */}
+      <div className="stat-cards-row">
+
+        {/* Total Active Today */}
+        <div className="stat-card stat-card-light">
+          <div className="stat-card-body">
+            <div>
+              <p className="stat-card-label">Total Active Today</p>
+              <h3 className="stat-card-value stat-gold">
+                {loading ? '—' : (stats?.total ?? 0).toLocaleString()}
+              </h3>
+            </div>
+            <div className="stat-card-icon stat-icon-gold">
+              <Users size={24} />
+            </div>
+          </div>
+          <div className="stat-card-footer">
+            <span className="stat-trend-up">
+              {loading ? '' : `${stats?.timeIn ?? 0} time-ins`}
+            </span>
+            <span className="stat-sub">&nbsp;·&nbsp;{loading ? '' : `${stats?.timeOut ?? 0} time-outs`}</span>
+          </div>
+        </div>
+
+        {/* Attendance Rate */}
+        <div className="stat-card stat-card-light">
+          <div className="stat-card-body">
+            <div>
+              <p className="stat-card-label">Attendance Rate</p>
+              <h3 className="stat-card-value stat-brown">
+                {loading ? '—' : `${attendanceRate ?? 0}%`}
+              </h3>
+            </div>
+            <div className="stat-card-icon stat-icon-brown">
+              <CalendarCheck size={24} />
+            </div>
+          </div>
+          <div className="stat-card-footer">
+            <span className="stat-trend-neutral">
+              {loading ? '' : `${totalUsers ?? 0} unique users`}
+            </span>
+            <span className="stat-sub">&nbsp;today</span>
+          </div>
+        </div>
+
+        {/* Security Status */}
+        <div className="stat-card stat-card-dark">
+          <div className="stat-card-body">
+            <div>
+              <p className="stat-card-label-dark">Security Status</p>
+              <h3 className="stat-card-value-dark">
+                {securityAlerts.length === 0 ? 'Secure' : 'Alert'}
+              </h3>
+            </div>
+            <div className="stat-card-icon stat-icon-dark">
+              <ShieldCheck size={24} />
+            </div>
+          </div>
+          <div className="stat-card-footer-dark">
+            <span className={securityAlerts.length > 0 ? 'stat-trend-alert' : 'stat-trend-secure'}>
+              {securityAlerts.length > 0 ? `${securityAlerts.length} active alert${securityAlerts.length > 1 ? 's' : ''}` : 'Active'}
+            </span>
+            <span className="stat-sub-dark">
+              &nbsp;·&nbsp;AI engine running
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── Bento Grid: Live Feed + Alerts ── */}
+      <div className="bento-grid">
+
+        {/* Live Attendance — col-span 8 */}
+        <div className="content-card card-feed">
           <div className="card-header">
             <div className="card-title">
-              <Clock size={20} />
+              <Clock size={18} />
               <h3>Live Attendance</h3>
             </div>
             <span className="live-badge">
-              <span className="pulse-dot"></span>
-              Live
+              <span className="pulse-dot" />
+              Real-time
             </span>
           </div>
 
-          <div className="card-body">
+          <div className="card-table-wrap">
             {loading ? (
-              <div className="empty-state">
-                <Clock size={48} />
-                <p>Loading...</p>
-              </div>
+              <div className="empty-state"><Clock size={40} /><p>Loading…</p></div>
             ) : recentAttendance.length === 0 ? (
               <div className="empty-state">
-                <Clock size={48} />
+                <Clock size={40} />
                 <p>No records yet today</p>
                 <span>Attendance will appear here as it's logged</span>
               </div>
             ) : (
-              <div className="attendance-list">
-                {recentAttendance.slice(0, 10).map((record) => (
-                  <div 
-                    key={record.id} 
-                    className={`attendance-row ${newRecordIds.has(record.id) ? 'new-record' : ''}`}
-                  >
-                    <div className="attendance-user">
-                      <div className="user-avatar">
-                        {record.user_name?.charAt(0) || '?'}
-                      </div>
-                      <div className="user-info">
-                        <div className="user-name">{record.user_name || 'Unknown'}</div>
-                        <div className="user-meta">
-                          <span className="user-type">{record.user_type}</span>
-                          {record.course_strand_dept && (
-                            <>
-                              <span className="separator">•</span>
-                              <span className="user-dept">{record.course_strand_dept}</span>
-                            </>
-                          )}
+              <table className="live-table">
+                <thead>
+                  <tr>
+                    <th>Student / Staff</th>
+                    <th>Group</th>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentAttendance.slice(0, 10).map(record => (
+                    <tr key={record.id} className={newRecordIds.has(record.id) ? 'new-record' : ''}>
+                      <td>
+                        <div className="live-user">
+                          <div className="live-avatar">
+                            {record.user_name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div>
+                            <p className="live-name">{record.user_name || 'Unknown'}</p>
+                            <p className="live-id">{record.user_type}</p>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="attendance-details">
-                      <span className={`attendance-badge ${record.attendance_type}`}>
-                        {record.attendance_type === 'time-in' ? <LogIn size={14} /> : <LogOut size={14} />}
-                        {record.attendance_type}
-                      </span>
-                      <div className="attendance-time">{formatTime(record.timestamp)}</div>
-                      <div className="time-ago">{getTimeAgo(record.timestamp)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </td>
+                      <td>
+                        <span className="group-chip">
+                          {record.course_strand_dept || record.user_type || '—'}
+                        </span>
+                      </td>
+                      <td className="live-time">{formatTime(record.timestamp)}</td>
+                      <td>
+                        <span className={`status-pill ${record.attendance_type === 'time-in' ? 'pill-in' : 'pill-out'}`}>
+                          {record.attendance_type === 'time-in'
+                            ? <><LogIn size={12} /> Time-In</>
+                            : <><LogOut size={12} /> Time-Out</>}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
 
-        {/* Security Alerts */}
-        <div className="content-card">
-          <div className="card-header">
+        {/* Security Alerts — col-span 4, dark */}
+        <div className="content-card card-alerts">
+          <div className="card-header card-header-dark">
             <div className="card-title">
-              <Shield size={20} />
+              <Shield size={18} className="alert-icon-pulse" />
               <h3>Security Alerts</h3>
             </div>
             {securityAlerts.length > 0 && (
-              <span className="alert-badge">{securityAlerts.length}</span>
+              <span className="alert-count-badge">{securityAlerts.length}</span>
             )}
           </div>
 
-          <div className="card-body">
+          <div className="card-body-dark">
             {loading ? (
-              <div className="empty-state">
-                <Shield size={48} />
-                <p>Loading alerts...</p>
-              </div>
+              <div className="empty-state-dark"><Shield size={40} /><p>Loading…</p></div>
             ) : securityAlerts.length === 0 ? (
-              <div className="empty-state empty-success">
-                <Shield size={48} />
+              <div className="empty-state-dark empty-secure">
+                <Shield size={40} />
                 <p>No Active Alerts</p>
                 <span>All systems secure</span>
               </div>
             ) : (
               <div className="alerts-list">
-                {securityAlerts.map((alert) => (
+                {securityAlerts.map(alert => (
                   <div key={alert.id} className={`alert-item severity-${alert.severity}`}>
-                    <div className="alert-header">
-                      <div className="alert-title">
-                        <AlertTriangle size={16} />
-                        <span>{alert.alert_type}</span>
-                      </div>
-                      <span className="camera-label">{alert.camera_type.toUpperCase()}</span>
+                    <div className="alert-top">
+                      <span className="alert-type-badge">{alert.alert_type}</span>
+                      <span className="alert-time">{getTimeAgo(alert.created_at)}</span>
                     </div>
-                    <p className="alert-description">{alert.ai_analysis}</p>
+
                     {alert.image_path && (
-                      <div className="alert-image">
-                        <img 
+                      <div className="alert-img-wrap">
+                        <img
                           src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}/security-alert-images/${alert.image_path}`}
-                          alt="Alert"
-                          onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                          alt="Alert capture"
+                          onError={e => ((e.target as HTMLImageElement).style.display = 'none')}
                         />
+                        <div className="alert-img-label">{alert.camera_type.toUpperCase()} Camera</div>
                       </div>
                     )}
-                    <div className="alert-footer">
-                      <span className="alert-timestamp">{formatTimestamp(alert.created_at)}</span>
-                      <button 
-                        className="btn-resolve"
-                        onClick={() => handleResolveAlert(alert.id)}
-                      >
+
+                    <p className="alert-title-text">
+                      <AlertTriangle size={14} />
+                      {alert.alert_type === 'SPOOF' ? 'Non-Human Signature Detected' : 'Unauthorized Access Attempt'}
+                    </p>
+                    <p className="alert-desc">{alert.ai_analysis}</p>
+
+                    <div className="alert-actions">
+                      <span className="camera-chip">{alert.camera_type.toUpperCase()}</span>
+                      <button className="btn-resolve" onClick={() => handleResolveAlert(alert.id)}>
                         Resolve
                       </button>
                     </div>
@@ -248,6 +309,7 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+
       </div>
     </div>
   );

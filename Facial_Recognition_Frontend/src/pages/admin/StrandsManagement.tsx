@@ -93,6 +93,10 @@ const StrandsManagement = () => {
 
   return (
     <div className="metadata-management">
+      <div className="page-title-block">
+        <h2>SHS Strands</h2>
+        <p className="page-subtitle">Manage Senior High School strands and their acronyms.</p>
+      </div>
       <div className="management-header">
         <div className="status-indicator">
           <span className="status-dot"></span>

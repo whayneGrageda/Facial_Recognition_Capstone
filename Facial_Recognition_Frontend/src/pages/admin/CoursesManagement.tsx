@@ -92,8 +92,11 @@ const CoursesManagement = () => {
 
   return (
     <div className="metadata-management">
-      <div className="management-header">
-        <div className="status-indicator">
+      <div className="page-title-block">
+        <h2>Courses</h2>
+        <p className="page-subtitle">Manage college courses available for student enrollment.</p>
+      </div>
+      <div className="management-header">        <div className="status-indicator">
           <span className="status-dot"></span>
           <span>Courses Management</span>
         </div>

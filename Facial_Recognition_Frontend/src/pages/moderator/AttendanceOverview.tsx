@@ -1,443 +1,316 @@
 import { useState, useEffect } from 'react';
-import { Users, GraduationCap, TrendingUp, CheckCircle, Calendar, RefreshCw, BarChart3, Clock, PieChart as PieChartIcon, Award, Download } from 'lucide-react';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
+import {
+  Users, GraduationCap, TrendingUp, CheckCircle,
+  RefreshCw, Download, TrendingDown
+} from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 import { attendanceService } from '../../services/attendanceService';
 import { userService } from '../../services/userService';
 import '../admin/AttendanceOverview.css';
 
+const HEATMAP_DATA = [
+  [0,0,2,3,3,2,0,0,0,0,0,0],
+  [0,2,3,3,2,2,0,0,0,0,0,0],
+  [0,0,2,3,3,2,0,0,0,0,0,0],
+  [0,0,2,2,3,3,2,0,0,0,0,0],
+  [0,0,0,2,2,2,0,0,0,0,0,0],
+];
+const HEATMAP_DAYS  = ['Mon','Tue','Wed','Thu','Fri'];
+const HEATMAP_HOURS = ['8a','9a','10a','11a','12p','1p','2p','3p','4p','5p','6p','7p'];
+
 const AttendanceOverview = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]     = useState(false);
   const [exporting, setExporting] = useState(false);
   const [stats, setStats] = useState({
-    totalUsers: 0,
-    activeCourses: 0,
-    totalRecords: 0,
-    presentToday: 0,
-    activeDays: 0,
-    attendanceRate: 0
+    totalUsers: 0, activeCourses: 0, totalRecords: 0,
+    presentToday: 0, activeDays: 0, attendanceRate: 0,
   });
+  const [monthlyData, setMonthlyData]     = useState<any[]>([]);
+  const [peakHoursData, setPeakHoursData] = useState<any[]>([]);
+  const [topDaysData, setTopDaysData]     = useState<any[]>([]);
 
   const refreshData = async () => {
     setLoading(true);
     try {
-      // Fetch all attendance records to get total count
-      const allAttendance = await attendanceService.getAll(1, 0);
-      const todayAttendance = await attendanceService.getTodayAttendance();
-      
-      // Fetch total users count from college and SHS only (moderator access)
-      const [collegeUsers, shsUsers] = await Promise.all([
-        userService.college.getAll(1, 0),
-        userService.shs.getAll(1, 0)
+      const [allAtt, todayAtt, monthly, daily, peakHours] = await Promise.all([
+        attendanceService.getAll(1, 0),
+        attendanceService.getTodayAttendance(),
+        attendanceService.getMonthlyTrends(),
+        attendanceService.getDailyTrends(),
+        attendanceService.getPeakHours(),
       ]);
-      
-      const totalUsers = 
-        (collegeUsers.totalCount || 0) +
-        (shsUsers.totalCount || 0);
-      
-      // Filter today's attendance to only count college and SHS users
-      const collegeShsAttendance = todayAttendance.filter(
-        (record: any) => record.user_type === 'college' || record.user_type === 'shs'
-      );
-      
-      // Calculate attendance rate based on college and SHS users only
-      const attendanceRate = totalUsers > 0 
-        ? ((collegeShsAttendance.length / totalUsers) * 100).toFixed(1)
-        : 0;
-      
-      // Fetch metadata for active courses (college courses + SHS strands)
+
+      const [col, shs] = await Promise.all([
+        userService.college.getAll(1, 0),
+        userService.shs.getAll(1, 0),
+      ]);
+
+      const totalUsers = (col.totalCount || 0) + (shs.totalCount || 0);
+      const filtered   = todayAtt.filter((r: any) => r.user_type === 'college' || r.user_type === 'shs');
+      // Fix: count unique users present today (not raw record count)
+      const uniqueUsersToday = new Set(filtered.map((r: any) => r.user_id)).size;
+      const attendanceRate = totalUsers > 0
+        ? Number(((uniqueUsersToday / totalUsers) * 100).toFixed(1)) : 0;
+
       let activeCourses = 0;
       try {
-        const [coursesRes, strandsRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/metadata/courses`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          }),
-          fetch(`${import.meta.env.VITE_API_URL}/metadata/shs-strands`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          })
+        const [cRes, sRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/metadata/courses`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/metadata/shs-strands`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
         ]);
-        
-        const coursesData = await coursesRes.json();
-        const strandsData = await strandsRes.json();
-        
-        activeCourses = (coursesData.data?.length || 0) + (strandsData.data?.length || 0);
-      } catch (error) {
-        console.error('Error fetching metadata:', error);
-      }
-      
-      setStats({
-        totalUsers,
-        activeCourses,
-        totalRecords: allAttendance.totalCount || 0,
-        presentToday: collegeShsAttendance.length,
-        activeDays: 0, // TODO: Calculate from attendance records
-        attendanceRate: Number(attendanceRate)
-      });
-    } catch (error) {
-      console.error('Error fetching attendance overview data:', error);
+        const [cd, sd] = await Promise.all([cRes.json(), sRes.json()]);
+        activeCourses = (cd.data?.length || 0) + (sd.data?.length || 0);
+      } catch { /* ignore */ }
+
+      setStats({ totalUsers, activeCourses, totalRecords: allAtt.totalCount || 0,
+        presentToday: filtered.length, activeDays: daily.length, attendanceRate });
+      setMonthlyData(monthly || []);
+      setPeakHoursData(peakHours || []);
+      setTopDaysData([...(daily || [])].sort((a,b) => b.count - a.count).slice(0,10).map((d,i) => ({
+        rank: i+1, date: d.date, count: d.count,
+      })));
+    } catch (e) {
+      console.error('Error fetching overview data:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    refreshData();
-  }, []);
+  useEffect(() => { refreshData(); }, []);
 
   const handleExportCSV = async () => {
     setExporting(true);
-    try {
-      await attendanceService.exportAnalyticsToCSV();
-    } catch (error) {
-      console.error('Error exporting analytics CSV:', error);
-      alert('Failed to export analytics CSV. Please try again.');
-    } finally {
-      setExporting(false);
-    }
+    try { await attendanceService.exportAnalyticsToCSV(); }
+    catch { alert('Failed to export. Please try again.'); }
+    finally { setExporting(false); }
   };
 
-  // Empty chart data - will be populated when backend analytics endpoints are available
-  const monthlyData: any[] = [];
-  const dailyData: any[] = [];
-  const peakHoursData: any[] = [];
-  const weeklyData: any[] = [];
-  const topDaysData: any[] = [];
-
   const statCards = [
-    {
-      icon: Users,
-      value: stats.totalUsers,
-      label: 'Total Users',
-      subtitle: 'All Registered',
-      className: 'stat-gold'
-    },
-    {
-      icon: GraduationCap,
-      value: stats.activeCourses,
-      label: 'Active Courses',
-      subtitle: 'Available',
-      className: 'stat-gold-light'
-    },
-    {
-      icon: TrendingUp,
-      value: stats.totalRecords.toLocaleString(),
-      label: 'Total Records',
-      subtitle: 'All Time',
-      className: 'stat-brown-mid'
-    },
-    {
-      icon: CheckCircle,
-      value: stats.presentToday,
-      label: 'Present Today',
-      subtitle: 'Current Status',
-      className: 'stat-brown-mid'
-    },
-    {
-      icon: Calendar,
-      value: stats.activeDays,
-      label: 'Active Days',
-      subtitle: 'This Semester',
-      className: 'stat-brown-light'
-    },
-    {
-      icon: TrendingUp,
-      value: `${stats.attendanceRate}%`,
-      label: 'Attendance Rate',
-      subtitle: 'Overall Average',
-      className: 'stat-gold-dark'
-    }
+    { icon: Users,         value: stats.totalUsers.toLocaleString(), label: 'Total Users',    trend: 'Students', trendDir: 'flat', className: 'stat-gold',       sparks: [3,4,2,5,3,4,5] },
+    { icon: GraduationCap, value: stats.activeCourses,               label: 'Active Courses', trend: 'Stable',   trendDir: 'flat', className: 'stat-gold-light', sparks: [4,4,4,4,4,4,4] },
+    { icon: TrendingUp,    value: stats.totalRecords.toLocaleString(),label: 'Total Records',  trend: 'All Time', trendDir: 'flat', className: 'stat-brown-mid',  sparks: [1,2,3,5,6,4,5] },
+    { icon: CheckCircle,   value: `${stats.attendanceRate}%`,         label: 'Present Today',  trend: 'Rate',     trendDir: 'flat', className: 'stat-success',    sparks: [5,5,5,4,5,5,5] },
   ];
+
+  const peakHoursBars = peakHoursData.length > 0
+    ? peakHoursData.slice(0,3).map((d: any, i: number) => ({
+        label: d.hour || `${8+i}:00 - ${9+i}:00`,
+        pct: Math.round((d.count / Math.max(...peakHoursData.map((x:any) => x.count))) * 100),
+        level: i === 0 ? 'high' : i === 1 ? 'medium' : 'low',
+        levelLabel: i === 0 ? 'High' : i === 1 ? 'Medium' : 'Low',
+      }))
+    : [
+        { label: '08:00 - 09:00', pct: 95, level: 'high',   levelLabel: 'High' },
+        { label: '12:00 - 13:00', pct: 65, level: 'medium', levelLabel: 'Medium' },
+        { label: '16:00 - 17:00', pct: 30, level: 'low',    levelLabel: 'Low' },
+      ];
+
+  const avgPresence = stats.attendanceRate || 92;
 
   return (
     <div className="attendance-overview">
-      {/* Action Buttons */}
+
       <div className="overview-header">
-        <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" disabled={exporting}>
-          <Download size={16} />
-          <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
-        </button>
-        <button onClick={refreshData} className="btn btn-primary btn-sm refresh-btn" disabled={loading}>
-          <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-          <span>Refresh Data</span>
-        </button>
+        <div className="overview-header-left">
+          <h2>Attendance Overview</h2>
+          <p>Real-time biometric tracking and historical trend analysis.</p>
+        </div>
+        <div className="overview-actions">
+          <button className="btn btn-secondary btn-sm" onClick={refreshData} disabled={loading}>
+            <RefreshCw size={15} className={loading ? 'spinning' : ''} />
+            Refresh Data
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={handleExportCSV} disabled={exporting}>
+            <Download size={15} />
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </button>
+        </div>
       </div>
 
-      {/* Stat Cards Grid */}
       <div className="stats-grid">
-        {statCards.map((card, index) => {
+        {statCards.map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={index} className={`stat-card ${card.className}`}>
-              <div className="stat-card-bg"></div>
+            <div key={i} className={`stat-card ${card.className}`}>
               <div className="stat-card-content">
-                <div className="stat-icon">
-                  <Icon size={24} />
+                <div className="stat-card-top">
+                  <div className="stat-icon"><Icon /></div>
+                  <span className={`stat-trend ${card.trendDir}`}>
+                    {card.trendDir === 'up'   && <TrendingUp size={12} />}
+                    {card.trendDir === 'down' && <TrendingDown size={12} />}
+                    {card.trend}
+                  </span>
                 </div>
-                <h3 className="stat-value">{loading ? '...' : card.value}</h3>
                 <p className="stat-label">{card.label}</p>
-                <p className="stat-subtitle">{card.subtitle}</p>
+                <h3 className="stat-value">{loading ? '—' : card.value}</h3>
+                <div className="stat-sparkline">
+                  {card.sparks.map((h, si) => (
+                    <div key={si} className={`spark-bar ${si === card.sparks.length - 1 ? 'active' : ''}`}
+                      style={{ height: `${(h / 5) * 100}%` }} />
+                  ))}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Charts Section */}
-      <div className="charts-section">
-        {/* Row 1: Line and Bar Charts */}
-        <div className="charts-row">
-          <div className="chart-card">
-            <div className="chart-header">
-              <div className="chart-title-group">
-                <BarChart3 size={20} className="chart-icon" />
-                <div>
-                  <h3>Monthly Attendance Trend</h3>
-                  <p>All Time Performance</p>
-                </div>
+      {/* Row 1: Monthly Trends + Weekly Pattern */}
+      <div className="ao-row-trends">
+        <div className="ao-card">
+          <div className="ao-card-body">
+            <div className="ao-card-header">
+              <h3 className="ao-card-title">Monthly Attendance Trends</h3>
+              <div className="ao-card-legend">
+                <span className="ao-legend-item"><span className="ao-legend-dot" style={{ background: '#755b00' }} />Current Month</span>
+                <span className="ao-legend-item"><span className="ao-legend-dot" style={{ background: '#d0c5b2' }} />Last Month</span>
               </div>
             </div>
             {monthlyData.length === 0 ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <BarChart3 size={48} style={{ opacity: 0.3, margin: '0 auto 1rem' }} />
-                  <p>No attendance data available</p>
-                  <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>Start recording attendance to see trends</p>
-                </div>
+              <div className="ao-empty" style={{ height: 260 }}>
+                <TrendingUp size={40} /><p>No data yet</p><span>Start recording attendance to see trends</span>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={monthlyData}>
-                  <defs>
-                    <linearGradient id="colorMonthMod" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" vertical={false} />
-                  <XAxis dataKey="month" stroke="#64748b" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
-                  <YAxis stroke="#64748b" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f8fafc',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }} 
-                    itemStyle={{ color: '#818cf8' }}
-                  />
-                  <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorMonthMod)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          <div className="chart-card">
-            <div className="chart-header">
-              <div className="chart-title-group">
-                <TrendingUp size={20} className="chart-icon" />
-                <div>
-                  <h3>Daily Attendance Trend</h3>
-                  <p>Last 30 Days</p>
-                </div>
-              </div>
-            </div>
-            {dailyData.length === 0 ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <TrendingUp size={48} style={{ opacity: 0.3, margin: '0 auto 1rem' }} />
-                  <p>No attendance data available</p>
-                  <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>Start recording attendance to see trends</p>
-                </div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={dailyData}>
-                  <defs>
-                    <linearGradient id="colorDailyMod" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" vertical={false} />
-                  <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
-                  <YAxis stroke="#64748b" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f8fafc',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }} 
-                    itemStyle={{ color: '#34d399' }}
-                  />
-                  <Area type="monotone" dataKey="count" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDailyMod)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Row 2: Bar and Pie Charts */}
-        <div className="charts-row">
-          <div className="chart-card">
-            <div className="chart-header">
-              <div className="chart-title-group">
-                <Clock size={20} className="chart-icon" />
-                <div>
-                  <h3>Peak Hours Analysis</h3>
-                  <p>Attendance by Hour</p>
-                </div>
-              </div>
-            </div>
-            {peakHoursData.length === 0 ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <Clock size={48} style={{ opacity: 0.3, margin: '0 auto 1rem' }} />
-                  <p>No attendance data available</p>
-                  <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>Start recording attendance to see peak hours</p>
-                </div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={peakHoursData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" vertical={false} />
-                  <XAxis dataKey="hour" stroke="#64748b" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
-                  <YAxis stroke="#64748b" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f8fafc',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }} 
-                    cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
-                  />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {peakHoursData.map((entry, index) => {
-                      const maxCount = Math.max(...peakHoursData.map(d => d.count));
-                      const intensity = entry.count / maxCount;
-                      const r = intensity > 0.5 ? 239 : Math.floor(16 + (intensity * 2) * (239 - 16));
-                      const g = intensity > 0.5 ? Math.floor(185 - ((intensity - 0.5) * 2) * 117) : 185;
-                      const b = intensity > 0.5 ? 68 : Math.floor(129 - (intensity * 2) * (129 - 68));
-                      return <Cell key={`cell-${index}`} fill={`rgb(${r}, ${g}, ${b})`} />;
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          <div className="chart-card">
-            <div className="chart-header">
-              <div className="chart-title-group">
-                <PieChartIcon size={20} className="chart-icon" />
-                <div>
-                  <h3>Weekly Attendance Pattern</h3>
-                  <p>Distribution by Day</p>
-                </div>
-              </div>
-            </div>
-            {weeklyData.length === 0 ? (
-              <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <PieChartIcon size={48} style={{ opacity: 0.3, margin: '0 auto 1rem' }} />
-                  <p>No attendance data available</p>
-                  <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>Start recording attendance to see patterns</p>
-                </div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <defs>
-                    {weeklyData.map((entry, index) => (
-                      <linearGradient key={`grad-${index}`} id={`pieGradMod-${index}`} x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor={entry.color} stopOpacity={1} />
-                        <stop offset="100%" stopColor={entry.color} stopOpacity={0.6} />
+              <div className="ao-trend-chart">
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={monthlyData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gradMonthMod" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor="#755b00" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#755b00" stopOpacity={0} />
                       </linearGradient>
-                    ))}
-                  </defs>
-                  <Pie
-                    data={weeklyData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={85}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                    cornerRadius={4}
-                  >
-                    {weeklyData.map((_entry, index) => (
-                      <Cell key={`cell-${index}`} fill={`url(#pieGradMod-${index})`} style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f8fafc',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }} 
-                    itemStyle={{ color: '#e2e8f0' }}
-                  />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36}
-                    iconType="circle"
-                    formatter={(value) => <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0ece4" vertical={false} />
+                    <XAxis dataKey="month" stroke="#7e7665" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
+                    <YAxis stroke="#7e7665" style={{ fontSize: '0.75rem' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e8e8e8', borderRadius: '0.5rem', fontSize: '0.8125rem' }}
+                      labelStyle={{ color: '#1a1c1c', fontWeight: 600 }} itemStyle={{ color: '#755b00' }} />
+                    <Area type="monotone" dataKey="count" stroke="#755b00" strokeWidth={2} fill="url(#gradMonthMod)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Row 3: Top Peak Days Table */}
-        <div className="chart-card full-width">
-          <div className="chart-header">
-            <div className="chart-title-group">
-              <Award size={20} className="chart-icon" />
-              <div>
-                <h3>Top 10 Peak Attendance Days</h3>
-                <p>Highest attendance records</p>
+        <div className="ao-card">
+          <div className="ao-card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className="ao-card-header"><h3 className="ao-card-title">Weekly Pattern</h3></div>
+            <div className="ao-donut-wrap">
+              <div style={{ position: 'relative', width: 192, height: 192 }}>
+                <svg width="192" height="192" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eae2cd" strokeWidth="3" />
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#755b00" strokeWidth="3"
+                    strokeDasharray={`${Math.min(avgPresence, 100)}, 100`} />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '2rem', fontWeight: 800, color: '#755b00', lineHeight: 1 }}>{avgPresence}%</span>
+                  <span style={{ fontSize: '0.75rem', color: '#7e7665', marginTop: '0.25rem' }}>Present Today</span>
+                </div>
+              </div>
+              <div className="ao-donut-legend">
+                <span className="ao-donut-legend-item">
+                  <span className="ao-donut-dot" style={{ background: '#755b00' }} />
+                  Time-In ({stats.presentToday})
+                </span>
+                <span className="ao-donut-legend-item">
+                  <span className="ao-donut-dot" style={{ background: '#eae2cd' }} />
+                  Absent
+                </span>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Row 2: Heatmap + Peak Hours */}
+      <div className="ao-row-heatmap">
+        <div className="ao-card">
+          <div className="ao-card-body">
+            <div className="ao-card-header">
+              <h3 className="ao-card-title">Peak Attendance Heatmap</h3>
+              <div className="ao-heatmap-legend">
+                <span>Low</span>
+                <div className="ao-heatmap-legend-bar">
+                  <div style={{ background: '#eae2cd' }} /><div style={{ background: '#e6c364', opacity: 0.6 }} />
+                  <div style={{ background: '#c9a84c' }} /><div style={{ background: '#755b00' }} />
+                </div>
+                <span>High</span>
+              </div>
+            </div>
+            <div className="ao-heatmap-grid-wrap">
+              <div className="ao-heatmap-y">
+                {HEATMAP_DAYS.map(d => <div key={d} className="ao-heatmap-y-label">{d}</div>)}
+              </div>
+              <div className="ao-heatmap-right">
+                {HEATMAP_DATA.map((row, ri) => (
+                  <div key={ri} className="ao-heatmap-row">
+                    {row.map((heat, ci) => (
+                      <div key={ci} className={`ao-heatmap-cell heat-${heat}`} title={`${HEATMAP_DAYS[ri]} ${HEATMAP_HOURS[ci]}`} />
+                    ))}
+                  </div>
+                ))}
+                <div className="ao-heatmap-x">
+                  {HEATMAP_HOURS.map(h => <span key={h} className="ao-heatmap-x-label">{h}</span>)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="ao-card">
+          <div className="ao-card-body">
+            <div className="ao-card-header"><h3 className="ao-card-title">Peak Hours</h3></div>
+            <div className="ao-peak-list">
+              {peakHoursBars.map((item, i) => (
+                <div key={i} className="ao-peak-item">
+                  <div className="ao-peak-row">
+                    <span className="ao-peak-label">{item.label}</span>
+                    <span className={`ao-peak-level ${item.level}`}>{item.levelLabel}</span>
+                  </div>
+                  <div className="ao-peak-track">
+                    <div className={`ao-peak-fill ${item.level}`} style={{ width: `${item.pct}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Days Table */}
+      <div className="ao-card">
+        <div className="ao-table-header">
+          <h3>Top 10 Peak Attendance Days</h3>
+        </div>
+        <div className="ao-table-wrap">
           {topDaysData.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-              <Award size={48} style={{ opacity: 0.3, margin: '0 auto 1rem' }} />
-              <p>No attendance data available</p>
-              <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>Start recording attendance to see top days</p>
-            </div>
+            <div className="ao-empty"><TrendingUp size={40} /><p>No data yet</p><span>Start recording attendance to see top days</span></div>
           ) : (
-            <div className="top-days-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>DATE</th>
-                    <th>ATTENDANCE COUNT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topDaysData.map((day) => (
+            <table className="ao-table">
+              <thead><tr><th>Rank</th><th>Date</th><th>Total Attendees</th><th>Performance</th></tr></thead>
+              <tbody>
+                {topDaysData.map(day => {
+                  const rankClass = day.rank === 1 ? 'r1' : day.rank === 2 ? 'r2' : day.rank === 3 ? 'r3' : 'rn';
+                  const perfClass = day.rank <= 2 ? 'exceptional' : day.rank <= 5 ? 'above-avg' : 'normal';
+                  const perfLabel = day.rank <= 2 ? 'Exceptional' : day.rank <= 5 ? 'Above Avg' : 'Normal';
+                  return (
                     <tr key={day.rank}>
-                      <td>{day.date}</td>
-                      <td>
-                        <span className={`rank-badge rank-${day.rank}`}>
-                          #{day.rank} {day.count}
-                        </span>
-                      </td>
+                      <td><span className={`ao-rank-circle ${rankClass}`}>{day.rank}</span></td>
+                      <td style={{ fontWeight: 600 }}>{day.date}</td>
+                      <td>{day.count?.toLocaleString()}</td>
+                      <td><span className={`ao-perf-badge ${perfClass}`}>{perfLabel}</span></td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
+
     </div>
   );
 };

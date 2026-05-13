@@ -218,6 +218,12 @@ const AttendanceLogs = () => {
 
   return (
     <div className="attendance-logs">
+      {/* Page Title */}
+      <div className="page-title-block">
+        <h2>Attendance Logs</h2>
+        <p className="page-subtitle">View and filter all attendance records across all users.</p>
+      </div>
+
       {/* Header with Actions */}
       <div className="logs-header">
         <div className="status-indicator">

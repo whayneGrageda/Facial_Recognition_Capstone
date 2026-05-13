@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Calendar, LogIn, LogOut, Target, Zap, Award } from 'lucide-react';
+import { LogIn, LogOut, Target, Calendar, TrendingUp, CheckCircle } from 'lucide-react';
 import { attendanceService } from '../../services/attendanceService';
 import type { Attendance } from '../../types';
-import '../admin/Dashboard.css';
 import './UserDashboard.css';
 
 interface AttendanceStats {
@@ -19,6 +18,8 @@ interface TodayAttendance {
   timeIn?: string;
   timeOut?: string;
 }
+
+const WEEK_DAYS = ['M', 'T', 'W', 'T', 'F'];
 
 const UserDashboard = () => {
   const { user } = useAuth();
@@ -41,7 +42,6 @@ const UserDashboard = () => {
   const fetchAttendanceStats = async () => {
     try {
       setLoading(true);
-      // Fetch user's attendance statistics
       const response = await attendanceService.getUserStats(user?.id || 0);
       setStats(response);
     } catch (error) {
@@ -53,24 +53,19 @@ const UserDashboard = () => {
 
   const fetchTodayAttendance = async () => {
     if (!user?.id) return;
-    
     try {
       const today = new Date().toISOString().split('T')[0];
-      const filters = {
+      const response = await attendanceService.getAll(100, 0, {
         user_id: user.id,
         user_type: user.userType,
         start_date: today,
         end_date: today,
-      };
-
-      const response = await attendanceService.getAll(100, 0, filters);
+      });
       const records = response.attendance || [];
-      
-      const timeInRecord = records.find((r: Attendance) => r.attendance_type === 'time-in');
+      const timeInRecord  = records.find((r: Attendance) => r.attendance_type === 'time-in');
       const timeOutRecord = records.find((r: Attendance) => r.attendance_type === 'time-out');
-      
       setTodayAttendance({
-        timeIn: timeInRecord ? new Date(timeInRecord.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
+        timeIn:  timeInRecord  ? new Date(timeInRecord.timestamp).toLocaleTimeString('en-US',  { hour: '2-digit', minute: '2-digit' }) : undefined,
         timeOut: timeOutRecord ? new Date(timeOutRecord.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
       });
     } catch (error) {
@@ -79,138 +74,195 @@ const UserDashboard = () => {
   };
 
   const getUserInfo = () => {
-    const userType = user?.userType;
-    let info = '';
-    
-    if (userType === 'college' && user?.course_name) {
-      info = `${user.course_name} - ${user.year_name || ''}`;
-    } else if (userType === 'shs' && user?.strand_name) {
-      info = `${user.strand_name} - ${user.grade_name || ''}`;
-    } else if (userType === 'faculty' && user?.department_name) {
-      info = user.department_name;
-    }
-    
-    return info;
+    const t = user?.userType;
+    if (t === 'college' && user?.course_name)     return `${user.course_name}${user.year_name ? ` • ${user.year_name}` : ''}`;
+    if (t === 'shs'     && user?.strand_name)     return `${user.strand_name}${user.grade_name ? ` • ${user.grade_name}` : ''}`;
+    if (t === 'faculty' && user?.department_name) return user.department_name;
+    return '';
   };
 
   const getRoleLabel = () => {
-    const userType = user?.userType;
-    if (userType === 'college') return 'College Student';
-    if (userType === 'shs') return 'SHS Student';
-    if (userType === 'faculty') return 'Faculty Member';
+    const t = user?.userType;
+    if (t === 'college') return 'College Student';
+    if (t === 'shs')     return 'SHS Student';
+    if (t === 'faculty') return 'Faculty Member';
     return 'User';
   };
 
-  const getStudentId = () => {
-    if (user?.userType === 'college' || user?.userType === 'shs') {
-      return user?.student_id || 'N/A';
-    }
-    return null;
-  };
+  const getStudentId = () =>
+    (user?.userType === 'college' || user?.userType === 'shs') ? user?.student_id : null;
+
+  // Build week presence array (M-F). Mark days up to today as present if thisWeekPresent covers them.
+  const todayDow = new Date().getDay(); // 0=Sun … 6=Sat
+  const weekDayIndex = todayDow === 0 ? 4 : Math.min(todayDow - 1, 4); // clamp to 0-4
+  const weekPresence = WEEK_DAYS.map((_, i) => i < stats.thisWeekPresent);
+
+  // Month bars — show 20 slots, fill presentDays
+  const totalSlots = 20;
+  const presentSlots = Math.min(stats.presentDays, totalSlots);
 
   return (
     <div className="dashboard-page user-dashboard">
-      {/* Welcome Header */}
-      <div className="user-welcome-header">
-        <div className="user-avatar-large">
-          {user?.name?.charAt(0) || 'U'}
+
+      {/* ── TOP SECTION: Welcome + Today ── */}
+      <div className="dashboard-top-section">
+
+        {/* Welcome Card */}
+        <div className="glass-card welcome-card">
+          <div className="welcome-avatar">
+            <div className="avatar-circle">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div className="avatar-status-dot" />
+          </div>
+          <div className="welcome-text">
+            <h2>
+              Welcome back, <span className="highlight">{user?.name || 'User'}!</span>
+            </h2>
+            <p>Your facial recognition profile is active and verified for today's sessions.</p>
+            <div className="welcome-badges">
+              <span className="welcome-badge verified">
+                <CheckCircle size={13} />
+                Verified
+              </span>
+              <span className="welcome-badge role">
+                {getRoleLabel()}
+                {getStudentId() && ` • ${getStudentId()}`}
+                {getUserInfo() && ` • ${getUserInfo()}`}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="user-welcome-content">
-          <h1 className="user-welcome-title">
-            Welcome back, <span className="highlight">{user?.name || 'User'}!</span>
-          </h1>
-          <p className="user-welcome-subtitle">
-            {getRoleLabel()}
-            {getStudentId() && ` • ID: ${getStudentId()}`}
-            {getUserInfo() && ` • ${getUserInfo()}`}
-          </p>
+
+        {/* Today's Attendance Card */}
+        <div className="glass-card today-card">
+          <div className="today-card-header">
+            <h3>Today</h3>
+            <span className="today-date-label">
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+            </span>
+          </div>
+
+          <div className="attendance-entries">
+            {/* Time In */}
+            <div className={`attendance-entry ${todayAttendance.timeIn ? 'has-record' : 'pending'}`}>
+              <div className="entry-left">
+                <div className={`entry-icon ${todayAttendance.timeIn ? 'time-in' : 'pending'}`}>
+                  <LogIn size={18} />
+                </div>
+                <div>
+                  <div className="entry-label">Time In</div>
+                  <div className={`entry-time ${!todayAttendance.timeIn ? 'muted' : ''}`}>
+                    {todayAttendance.timeIn || '-- : --'}
+                  </div>
+                </div>
+              </div>
+              {todayAttendance.timeIn && (
+                <span className="entry-status-badge on-time">On Time</span>
+              )}
+            </div>
+
+            {/* Time Out */}
+            <div className={`attendance-entry ${todayAttendance.timeOut ? 'has-record' : 'pending'}`}>
+              <div className="entry-left">
+                <div className={`entry-icon ${todayAttendance.timeOut ? 'time-out' : 'pending'}`}>
+                  <LogOut size={18} />
+                </div>
+                <div>
+                  <div className="entry-label">Time Out</div>
+                  <div className={`entry-time ${!todayAttendance.timeOut ? 'muted' : ''}`}>
+                    {todayAttendance.timeOut || '-- : --'}
+                  </div>
+                </div>
+              </div>
+              {todayAttendance.timeOut && (
+                <span className="entry-status-badge checked-out">Checked Out</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Today's Attendance Card */}
-      <div className="today-attendance-card">
-        <div className="card-header">
-          <h3>Today's Attendance</h3>
-          <span className="date-badge">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-        </div>
-        
-        <div className="attendance-time-grid">
-          <div className={`time-card ${todayAttendance.timeIn ? 'active' : 'inactive'}`}>
-            <div className="time-card-header">
-              <LogIn size={20} />
-              <span>Time In</span>
-            </div>
-            <div className="time-display">
-              {todayAttendance.timeIn || '--:--'}
-            </div>
-            {todayAttendance.timeIn && (
-              <div className="time-status">Checked In</div>
-            )}
-          </div>
+      {/* ── STATS BENTO GRID ── */}
+      <div className="stats-bento">
 
-          <div className={`time-card ${todayAttendance.timeOut ? 'active-out' : 'inactive'}`}>
-            <div className="time-card-header">
-              <LogOut size={20} />
-              <span>Time Out</span>
+        {/* Attendance Rate */}
+        <div className="glass-card stat-bento-card">
+          <div>
+            <div className="stat-bento-icon gold">
+              <Target size={22} />
             </div>
-            <div className="time-display">
-              {todayAttendance.timeOut || '--:--'}
+            <div className="stat-bento-label">Attendance Rate</div>
+            <div className="stat-bento-value">
+              <span className="stat-bento-number">
+                {loading ? '—' : `${stats.attendanceRate}%`}
+              </span>
+              {!loading && stats.attendanceRate >= 90 && (
+                <span className="stat-bento-trend">
+                  <TrendingUp size={14} /> Good
+                </span>
+              )}
             </div>
-            {todayAttendance.timeOut && (
-              <div className="time-status">Checked Out</div>
-            )}
+          </div>
+          <div className="stat-progress-bar">
+            <div
+              className="stat-progress-fill"
+              style={{ width: loading ? '0%' : `${stats.attendanceRate}%` }}
+            />
           </div>
         </div>
-      </div>
 
-      {/* Stats Overview */}
-      <div className="stats-section">
-        <h3 className="section-title">Your Statistics</h3>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">
-              <Calendar size={28} />
+        {/* Present Days */}
+        <div className="glass-card stat-bento-card">
+          <div>
+            <div className="stat-bento-icon brown">
+              <Calendar size={22} />
             </div>
-            <div className="stat-content">
-              <div className="stat-value">{loading ? '...' : stats.presentDays}</div>
-              <div className="stat-label">Present Days</div>
-              <div className="stat-description">Total attendance recorded</div>
+            <div className="stat-bento-label">Present Days</div>
+            <div className="stat-bento-value">
+              <span className="stat-bento-number">{loading ? '—' : stats.presentDays}</span>
+              <span className="stat-bento-sub">/ {stats.totalDays || '—'} Days</span>
             </div>
           </div>
-
-          <div className="stat-card">
-            <div className="stat-icon">
-              <Target size={28} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{loading ? '...' : `${stats.attendanceRate}%`}</div>
-              <div className="stat-label">Attendance Rate</div>
-              <div className="stat-description">Your overall performance</div>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon">
-              <Zap size={28} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{loading ? '...' : stats.thisWeekPresent}</div>
-              <div className="stat-label">This Week</div>
-              <div className="stat-description">Days present this week</div>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon">
-              <Award size={28} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{loading ? '...' : stats.thisMonthPresent}</div>
-              <div className="stat-label">This Month</div>
-              <div className="stat-description">Days present this month</div>
-            </div>
+          <div className="month-bars">
+            {Array.from({ length: totalSlots }).map((_, i) => (
+              <div
+                key={i}
+                className={`month-bar ${i < presentSlots ? '' : 'absent'}`}
+                style={{ height: `${Math.max(40, Math.min(100, 60 + (i % 3) * 15))}%` }}
+              />
+            ))}
           </div>
         </div>
+
+        {/* This Week */}
+        <div className="glass-card stat-bento-card">
+          <div>
+            <div className="stat-bento-icon cream">
+              <CheckCircle size={22} />
+            </div>
+            <div className="stat-bento-label">This Week</div>
+            <div className="stat-bento-value">
+              <span className="stat-bento-number">{loading ? '—' : stats.thisWeekPresent}</span>
+              <span className="stat-bento-sub">/ 5 Days</span>
+            </div>
+          </div>
+          <div className="week-dots">
+            {WEEK_DAYS.map((day, i) => (
+              <div key={i} className="week-day">
+                <span className={`week-day-label ${i === weekDayIndex ? 'today' : ''}`}>{day}</span>
+                <div className={`week-dot ${weekPresence[i] ? 'present' : 'absent'} ${i === weekDayIndex ? 'today-dot' : ''}`}>
+                  {weekPresence[i] && (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
     </div>
   );

@@ -46,9 +46,9 @@ const DashboardLayout = ({ children, navItems, title }: DashboardLayoutProps) =>
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get current page title from navItems based on current path
-  const currentPage = navItems.find(item => item.path === location.pathname);
-  const pageTitle = currentPage?.label || 'Dashboard';
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
 
   // Group nav items by section
   const sections: { [key: string]: NavItem[] } = {};
@@ -92,7 +92,7 @@ const DashboardLayout = ({ children, navItems, title }: DashboardLayoutProps) =>
         {/* Top Bar */}
         <header className="dashboard-topbar">
           <div className="topbar-left">
-            <h1>{pageTitle}</h1>
+            <h1>{today}</h1>
           </div>
           <div className="topbar-right">
             <div className="profile-dropdown" ref={dropdownRef}>

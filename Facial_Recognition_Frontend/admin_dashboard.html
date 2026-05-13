@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FaceTrack Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#7a5337",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#c9a84c",
+                        "primary": "#755b00",
+                        "tertiary-fixed-dim": "#cdc6b2",
+                        "surface-container-highest": "#e2e2e2",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#e6c364",
+                        "error": "#ba1a1a",
+                        "tertiary": "#635e4e",
+                        "surface-tint": "#755b00",
+                        "on-tertiary-fixed": "#1f1c0f",
+                        "surface-variant": "#e2e2e2",
+                        "on-tertiary-container": "#444031",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#503d00",
+                        "tertiary-container": "#b2ab98",
+                        "secondary-fixed-dim": "#f0bc99",
+                        "secondary-fixed": "#ffdcc6",
+                        "inverse-on-surface": "#f0f1f1",
+                        "background": "#f9f9f9",
+                        "on-background": "#1a1c1c",
+                        "outline": "#7e7665",
+                        "tertiary-fixed": "#eae2cd",
+                        "primary-fixed": "#ffe08f",
+                        "primary-fixed-dim": "#e6c364",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f9f9f9",
+                        "on-primary-fixed-variant": "#584400",
+                        "on-primary-fixed": "#241a00",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "secondary": "#7d5539",
+                        "surface-container-high": "#e8e8e8",
+                        "surface-dim": "#dadada",
+                        "on-secondary-fixed-variant": "#623e24",
+                        "surface-container": "#eeeeee",
+                        "on-surface-variant": "#4d4637",
+                        "on-surface": "#1a1c1c",
+                        "inverse-surface": "#2f3131",
+                        "on-secondary-fixed": "#2f1401",
+                        "secondary-container": "#ffc9a6",
+                        "on-tertiary-fixed-variant": "#4b4738",
+                        "surface-container-low": "#f3f3f4",
+                        "surface": "#f9f9f9",
+                        "outline-variant": "#d0c5b2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "unit": "8px",
+                        "container-max": "1440px",
+                        "margin-desktop": "48px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Manrope"],
+                        "label-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "display-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glass-card-dark {
+            background: rgba(26, 28, 28, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+        }
+        .gold-glow {
+            box-shadow: 0 0 30px rgba(201, 168, 76, 0.15);
+        }
+        .status-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .5; transform: scale(1.1); }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- Parent Layout Container -->
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation (Replica of IMAGE_6) -->
+<aside class="hidden md:flex flex-col w-64 bg-surface-container-lowest border-r border-outline-variant/30 z-50">
+<div class="p-6">
+<span class="text-headline-md font-headline-md font-extrabold text-primary tracking-tight">FaceTrack</span>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center px-4 py-3 rounded-xl bg-primary-container text-on-primary-container font-bold transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container transition-all" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="text-label-md">Students</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container transition-all" href="#">
+<span class="material-symbols-outlined mr-3">verified_user</span>
+<span class="text-label-md">Security</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container transition-all" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="text-label-md">Reports</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container transition-all" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="text-label-md">Settings</span>
+</a>
+</nav>
+<div class="p-4 mt-auto">
+<div class="glass-card p-4 rounded-xl border border-primary/10">
+<p class="text-label-sm text-primary font-bold">System Status</p>
+<div class="flex items-center mt-2">
+<div class="w-2 h-2 bg-primary rounded-full status-pulse mr-2"></div>
+<span class="text-label-sm text-on-surface-variant">AI Engine Active</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden bg-surface-bright">
+<!-- Header (Replica of IMAGE_6) -->
+<header class="h-16 flex items-center justify-between px-margin-desktop bg-surface/70 backdrop-blur-xl border-b border-outline-variant/20 z-40">
+<div class="flex items-center gap-4">
+<h1 class="text-headline-md font-headline-md text-on-surface">Campus Overview</h1>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-label-md w-64 focus:ring-2 focus:ring-primary-container" placeholder="Search student or alert..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<p class="text-label-md font-bold leading-tight">Admin User</p>
+<p class="text-label-sm text-outline">Security Operations</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold">
+                            AU
+                        </div>
+</div>
+</div>
+</header>
+<!-- Scrollable Content Canvas -->
+<div class="flex-1 overflow-y-auto p-gutter lg:p-margin-desktop space-y-gutter bg-background">
+<!-- Top Level Overview Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Total Active Users -->
+<div class="glass-card p-6 rounded-xl gold-glow border-l-4 border-l-primary">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-label-md text-on-surface-variant uppercase tracking-wider">Total Active Users</p>
+<h3 class="text-display-lg font-display-lg text-primary mt-2">12,482</h3>
+</div>
+<div class="p-3 bg-primary-fixed rounded-lg text-on-primary-fixed">
+<span class="material-symbols-outlined">person_celebrate</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 text-label-sm">
+<span class="text-primary font-bold">+5.2%</span>
+<span class="text-outline">vs yesterday</span>
+</div>
+</div>
+<!-- Attendance Rate -->
+<div class="glass-card p-6 rounded-xl border-l-4 border-l-secondary">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-label-md text-on-surface-variant uppercase tracking-wider">Attendance Rate</p>
+<h3 class="text-display-lg font-display-lg text-secondary mt-2">94.8%</h3>
+</div>
+<div class="p-3 bg-secondary-fixed rounded-lg text-on-secondary-fixed">
+<span class="material-symbols-outlined">fact_check</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 text-label-sm">
+<span class="text-secondary font-bold">Stable</span>
+<span class="text-outline">Target: 95.0%</span>
+</div>
+</div>
+<!-- Security Status -->
+<div class="glass-card-dark p-6 rounded-xl border-l-4 border-l-primary-container shadow-2xl">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-label-md text-primary-container uppercase tracking-wider">Security Status</p>
+<h3 class="text-display-lg font-display-lg text-white mt-2">Secure</h3>
+</div>
+<div class="p-3 bg-primary-container/20 rounded-lg text-primary-container">
+<span class="material-symbols-outlined">shield_with_heart</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 text-label-sm">
+<span class="text-primary-container font-bold">Active</span>
+<span class="text-white/60">3 Spoof attempts blocked today</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Content -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Live Attendance Feed (Col-span 8) -->
+<div class="lg:col-span-8 flex flex-col gap-gutter">
+<div class="glass-card rounded-xl overflow-hidden flex flex-col h-full">
+<div class="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center bg-surface-container-low/50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">sensors</span>
+<h2 class="text-headline-md font-headline-md text-on-surface">Live Attendance</h2>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 rounded-full bg-primary-container/20 text-on-primary-container text-label-sm font-bold border border-primary-container/30">Real-time</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-label-md text-outline border-b border-outline-variant/10">
+<th class="px-6 py-4 font-semibold">Student Name</th>
+<th class="px-6 py-4 font-semibold">Academic Group</th>
+<th class="px-6 py-4 font-semibold">Timestamp</th>
+<th class="px-6 py-4 font-semibold">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<!-- Row 1 -->
+<tr class="hover:bg-primary-container/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-primary-container overflow-hidden p-0.5">
+<img alt="Student Profile" class="w-full h-full object-cover rounded-full" data-alt="A close-up high-resolution portrait of a female university student with a bright, focused expression. She is in a naturally lit modern hallway, reflecting the educational setting. The image is crisp, with a subtle depth of field highlighting the clarity of her facial features for the FaceTrack biometric AI system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0gm4QOkm4s3bDE9EmNiakT6-bbojXxg1lyLQAzZm5nrq3i6NSwDVt5HKqPs728Ex0Nn32cntYe6hOfBKWoyPtebT3OCCC4GYHm_jFpw5x3nWMCubEycumOJqRq_SBa-UhZQVpNOo3jGY64LiPg1fwkOHF-aMWxAoMzGPMN70OuKqwRZo1wQFh-PopXkWq_ZvUsfWEe8QP-IWivdVRAA2WXQe5cR1XvEXJaERk9osJNROqAvIoAiMqJ8h29nRAwJaNjB5vK9nrJ5PD"/>
+</div>
+<div>
+<p class="text-label-md font-bold text-on-surface">Elena Rodriguez</p>
+<p class="text-label-sm text-outline">ID: FT-8829</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-label-md px-3 py-1 rounded-lg bg-surface-container-highest text-on-surface-variant font-medium">College of Engineering</span>
+</td>
+<td class="px-6 py-4 text-label-md text-on-surface-variant">08:42:15 AM</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-label-sm font-bold text-primary px-3 py-1 rounded-full bg-primary-fixed/30 border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Time-In
+                                                </span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-primary-container/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-primary-container overflow-hidden p-0.5">
+<img alt="Student Profile" class="w-full h-full object-cover rounded-full" data-alt="A detailed, clear studio portrait of a young male student in his late teens wearing a clean, white academic uniform. The background is a soft beige, maintaining the FaceTrack premium aesthetic. The lighting is balanced and professional, showcasing the distinct facial geometry necessary for high-fidelity facial recognition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeXoxPPCfG-GMvbbNoM82Ov41J4290SjQQPB6kuqnOmDdeXMq6H2eRlPocojiYJHLAxpbG8lbIUR28pfyLMlUC9CXxQRKPKE_WteVF2A1OphcnxaCaXsi-PiGldcBRW8O1TV8v1YlxqXYRHF26FnSdFpNfZaZ2og_TvmOcOpX1ACq_jlbQ0cFsDQe9oqIUYdsX7cp7MjhH6QPAHBuqCW82qTU4II4wPmH9U9cL6pT6alXdgz5zFBqPuwzARtQ1vY3PdK-VlBcAL1dF"/>
+</div>
+<div>
+<p class="text-label-md font-bold text-on-surface">Marcus Chen</p>
+<p class="text-label-sm text-outline">ID: FT-1204</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-label-md px-3 py-1 rounded-lg bg-surface-container-highest text-on-surface-variant font-medium">Senior High School</span>
+</td>
+<td class="px-6 py-4 text-label-md text-on-surface-variant">08:41:58 AM</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-label-sm font-bold text-primary px-3 py-1 rounded-full bg-primary-fixed/30 border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Time-In
+                                                </span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-primary-container/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-secondary overflow-hidden p-0.5">
+<img alt="Student Profile" class="w-full h-full object-cover rounded-full" data-alt="A professional headshot of a young woman with dark hair, looking directly into the camera with a calm and confident expression. The soft-box lighting creates gentle highlights on her face, ensuring high contrast for biometric data capturing. The style is minimalist and clean, consistent with a high-end educational institution's brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCV8RvdXRaKp6lU0-BM3EJSwHwjHFjG7V_ckSCeYojwqpMm2Jbh-JtC3tAFzjNI-dmlbGceQo0M_OcT7ZXe8RmUEwUsGQVQ_Uo7JTS5HCtiZzD6Q9lIlTCN_zaF3m5JQeWhodIJT4jzDocXTnja2uJ6VFvTW42kI43__u5_jNvGVTjOPUwNOrdTRVZ9lfUgFynCTgcv2O0XRC4Ai8W9ZkEtlc3PGm15f1iljs7ajxFu_rnTLABm0i3WBVKGZ4uiC3YqWJxUGWXGg_6"/>
+</div>
+<div>
+<p class="text-label-md font-bold text-on-surface">Amina Okafor</p>
+<p class="text-label-sm text-outline">ID: FT-9931</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-label-md px-3 py-1 rounded-lg bg-surface-container-highest text-on-surface-variant font-medium">Graduate School</span>
+</td>
+<td class="px-6 py-4 text-label-md text-on-surface-variant">08:40:22 AM</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 text-label-sm font-bold text-secondary px-3 py-1 rounded-full bg-secondary-fixed/30 border border-secondary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Time-Out
+                                                </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-auto p-4 border-t border-outline-variant/10 text-center">
+<button class="text-label-md font-bold text-primary hover:underline transition-all">View All Activity</button>
+</div>
+</div>
+</div>
+<!-- Security Alerts Panel (Col-span 4) -->
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<div class="glass-card-dark rounded-xl overflow-hidden flex flex-col h-full shadow-2xl">
+<div class="px-6 py-4 border-b border-primary-container/20 flex items-center gap-3">
+<span class="material-symbols-outlined text-error status-pulse">warning</span>
+<h2 class="text-headline-md font-headline-md text-white">Security Alerts</h2>
+</div>
+<div class="p-6 space-y-6">
+<!-- Alert Item: Spoof Attempt -->
+<div class="bg-error/10 border border-error/30 rounded-xl p-5 overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="bg-error text-white text-[10px] font-extrabold px-2 py-0.5 rounded tracking-widest uppercase">Critical: Spoof</div>
+<span class="text-label-sm text-error/80">2 mins ago</span>
+</div>
+<div class="relative rounded-lg overflow-hidden border border-error/50 bg-black aspect-video mb-4">
+<img alt="Spoof Attempt Capture" class="w-full h-full object-cover opacity-80 blur-[2px]" data-alt="A low-light security camera frame showing a suspicious attempt to use a digital tablet to display a photo for facial recognition. The tablet screen glows intensely, casting an artificial blue light on the surrounding area. The scene is framed by a digital security overlay with red scanning lines and technical biometric readouts, indicating a blocked unauthorized access attempt." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPXlIC1IDw88uivFVpQF_HJX67z6uIJP3wOFOZGXniEpRSlvmSkhZpVjA2kKTV74IF8mJaR6Rj6qCaT6fCQqO4nniSqVLtTh3Gq4ZZYZf2rTeqJ2Sj-MqLRvLtNDJXjlKv3VeDHxmphHWKQ3eesd7gvYZZ9ZFDWTCed-FpaMAE8JuY0gOWOKhxqxwvoQocULi_kxa9tLDVsaI5GelmUBjg4dbnfcgAFIjgTEVSjC7plUnkQRGFqYUWT-H88E2JLtQ4c2qLQZHw2Fkl"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="px-4 py-2 bg-error/90 text-white font-bold text-headline-md rounded-lg shadow-xl uppercase tracking-tighter">Access Denied</div>
+</div>
+<div class="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded text-[10px] text-white/80 font-mono">
+                                            Gate-04 // Attempt: Presentation Attack
+                                        </div>
+</div>
+<div class="space-y-1">
+<p class="text-label-md font-bold text-white">Non-Human Signature Detected</p>
+<p class="text-label-sm text-error-container/70">Static image pattern detected in biometric stream. Liveness check failed at Entrance A.</p>
+</div>
+<div class="mt-4 grid grid-cols-2 gap-2">
+<button class="bg-white/10 hover:bg-white/20 text-white text-label-sm font-bold py-2 rounded-lg transition-all">Dismiss</button>
+<button class="bg-error text-white text-label-sm font-bold py-2 rounded-lg transition-all hover:bg-error/80">Flag Guard</button>
+</div>
+</div>
+<!-- Alert Item: Unauthorized -->
+<div class="bg-primary-container/10 border border-primary-container/20 rounded-xl p-5">
+<div class="flex justify-between items-start mb-3">
+<div class="bg-primary-container text-on-primary-container text-[10px] font-extrabold px-2 py-0.5 rounded tracking-widest uppercase">Unauthorized</div>
+<span class="text-label-sm text-primary-container/80">15 mins ago</span>
+</div>
+<p class="text-label-md font-bold text-white">Unregistered Face Detected</p>
+<p class="text-label-sm text-on-tertiary-container/70 mt-1">Person not found in database attempted access at Faculty Lounge.</p>
+<button class="mt-3 w-full border border-primary-container/30 text-primary-container text-label-sm font-bold py-2 rounded-lg hover:bg-primary-container/10 transition-all">Review Footage</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer (Replica of Shared Component) -->
+<footer class="mt-12 pt-12 border-t border-outline-variant/30 grid grid-cols-1 md:grid-cols-4 gap-gutter pb-8">
+<div class="md:col-span-1">
+<span class="text-headline-md font-headline-md font-bold text-primary tracking-tight">FaceTrack</span>
+<p class="text-label-sm text-outline mt-2">Securing Educational Excellence.</p>
+</div>
+<div>
+<h4 class="text-label-md font-bold text-on-surface mb-4">Resources</h4>
+<ul class="space-y-2 text-label-sm text-outline">
+<li><a class="hover:text-primary transition-colors" href="#">Security Whitepaper</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-label-md font-bold text-on-surface mb-4">Support</h4>
+<ul class="space-y-2 text-label-sm text-outline">
+<li><a class="hover:text-primary transition-colors" href="#">Contact Support</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+</ul>
+</div>
+<div class="text-right">
+<p class="text-label-sm text-outline">© 2024 FaceTrack AI.</p>
+<p class="text-label-sm text-outline">v2.4.0 High-Performance Hub</p>
+</div>
+</footer>
+</div>
+</main>
+</div>
+<!-- Floating Action Button Contextual Logic -->
+<!-- FAB is suppressed on Dashboard for clarity, as requested by guidelines -->
+</body></html>

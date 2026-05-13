@@ -92,6 +92,10 @@ const DepartmentsManagement = () => {
 
   return (
     <div className="metadata-management">
+      <div className="page-title-block">
+        <h2>Faculty Departments</h2>
+        <p className="page-subtitle">Manage faculty departments for staff classification.</p>
+      </div>
       <div className="management-header">
         <div className="status-indicator">
           <span className="status-dot"></span>

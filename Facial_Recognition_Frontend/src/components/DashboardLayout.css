@@ -1,8 +1,7 @@
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background-color: #ffffff;
-  /* white background */
+  background-color: #f9f9f9;
 }
 
 .dashboard-sidebar {
