@@ -126,35 +126,70 @@ class SecurityAnalystAgent:
                 
                 cam_type = metadata.get("attendance_type", "Unknown Camera").upper()
                 
-                # Save the alert image
-                image_path = self._save_alert_image(frame_bytes, event_type, cam_type)
-                
-                # Try AI analysis, fallback to generic message if it fails
+                # === AI VERIFICATION GATE ===
+                # Ask AI to determine if this is a REAL spoof or a false positive
+                # Only send to backend if AI confirms it's a genuine threat
+                is_real_threat = True
                 ai_analysis = None
+                
                 try:
-                    # Prepare prompt based on event type
+                    if event_type == 'SPOOF':
+                        # Verification prompt — AI decides if it's real or false positive
+                        verify_prompt = f"""
+You are a Security AI verifying a spoofing alert from a facial recognition attendance system.
+The liveness detection model flagged this frame as a potential spoof on the {cam_type} camera.
+
+Look at this image carefully and determine:
+Is someone ACTUALLY presenting a photo, phone screen, printed image, tablet, or mask to the camera?
+
+Common FALSE POSITIVES (NOT real spoofs):
+- Person looking sideways or at an angle (head turned away)
+- Person partially out of frame or walking past
+- Empty room or no face visible
+- Person with their back to camera
+- Blurry or poorly lit face
+- Background monitors/screens visible but no one holding them up to camera
+
+A REAL SPOOF looks like:
+- Someone holding a phone/tablet screen showing a face directly at the camera
+- Someone holding a printed photo of a face up to the camera
+- A flat 2D image being presented where a real face should be
+
+Respond with ONLY one word: REAL or FALSE
+"""
+                        response = self.model.generate_content([verify_prompt, pil_img])
+                        verdict = response.text.strip().upper()
+                        
+                        if 'FALSE' in verdict:
+                            is_real_threat = False
+                            print(f"[AI AGENT] ✓ False positive detected — NOT a real spoof. Discarding alert.")
+                            # Clean up saved image for false positives
+                            continue
+                        else:
+                            print(f"[AI AGENT] ⚠ AI confirms: REAL spoofing attempt detected!")
+                    
+                    # Now generate the detailed analysis for confirmed threats
                     prompt = f"""
-                    You are a Security Analyst AI monitoring a facial recognition system.
-                    An alert of type '{event_type}' has been triggered on the {cam_type} camera.
-                    
-                    Analyze the provided camera frame. Describe what you see in the frame that might be causing this alert.
-                    For example, if it's a SPOOF alert, is the person holding up a phone screen, a printed photo, or wearing a mask?
-                    If it's an UNKNOWN person, describe their appearance and any suspicious behavior (e.g., wearing sunglasses, hoodie).
-                    Keep your response concise, professional, and actionable. Max 3 sentences.
-                    """
-                    
+You are a Security Analyst AI monitoring a facial recognition system.
+A CONFIRMED alert of type '{event_type}' has been triggered on the {cam_type} camera.
+
+Analyze the provided camera frame. Describe what you see:
+- If it's a SPOOF: what is being used (phone screen, printed photo, tablet, mask)?
+- If it's UNKNOWN: describe the person's appearance.
+Keep your response concise, professional, and actionable. Max 3 sentences.
+"""
                     response = self.model.generate_content([prompt, pil_img])
                     ai_analysis = response.text.strip()
                     
                     print("\n" + "="*70)
-                    print(f"🚨 [SECURITY AI ANALYST] - ALERT: {event_type} ({cam_type})")
+                    print(f"🚨 [SECURITY AI ANALYST] - CONFIRMED ALERT: {event_type} ({cam_type})")
                     print(ai_analysis)
                     print("="*70 + "\n")
                     
                 except Exception as ai_error:
-                    # Fallback to generic message if AI analysis fails
+                    # If AI fails, use fallback but still send (err on side of caution)
                     print(f"[AI AGENT] AI analysis failed: {ai_error}")
-                    print("[AI AGENT] Using fallback generic message...")
+                    print("[AI AGENT] Using fallback — sending alert to be safe...")
                     
                     if event_type == 'SPOOF':
                         ai_analysis = "A potential spoofing attempt was detected by the liveness detection system. The camera frame may show someone presenting a photo, screen, or other non-live representation. Manual review of the captured image is recommended to verify the security threat."
@@ -166,7 +201,14 @@ class SecurityAnalystAgent:
                     print(ai_analysis)
                     print("="*70 + "\n")
                 
-                # Send to backend API (even if AI analysis failed)
+                # Only send confirmed threats to backend
+                if not is_real_threat:
+                    continue
+                
+                # Save the alert image (only for confirmed threats)
+                image_path = self._save_alert_image(frame_bytes, event_type, cam_type)
+                
+                # Send to backend API
                 alert_data = {
                     'alert_type': event_type,
                     'camera_type': cam_type.lower(),

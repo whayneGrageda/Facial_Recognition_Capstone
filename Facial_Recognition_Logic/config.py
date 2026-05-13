@@ -44,6 +44,7 @@ class Config:
     LIVENESS_THRESHOLD = float(os.getenv('LIVENESS_THRESHOLD', '0.7'))
     SPOOF_BLOCK_DURATION = float(os.getenv('SPOOF_BLOCK_DURATION', '10.0'))  # Seconds to block recognition after spoof detected
     SPOOF_INSTANT_THRESHOLD = float(os.getenv('SPOOF_INSTANT_THRESHOLD', '0.4'))  # Liveness score below this = instant SPOOF (high confidence)
+    MIN_FACE_SIZE_PX = int(os.getenv('MIN_FACE_SIZE_PX', '60'))  # Minimum face bounding box size in pixels to process
 
     # AI Reasoning Agent
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
