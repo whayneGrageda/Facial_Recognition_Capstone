@@ -42,7 +42,7 @@ export const AnomalyDetectionService = {
     },
     abnormal: {
       veryLateArrival: 10, // After 10 AM
-      veryShortStay: 2, // Less than 2 hours
+      veryShortStay: 2, // Less than 2 hours (kept for config reference, check disabled)
       incompleteDayMin: 2, // More than 2 hours
       incompleteDayMax: 4, // But less than 4 hours
       lateNightStart: 18, // 6 PM
@@ -91,7 +91,6 @@ export const AnomalyDetectionService = {
 
     // Check for abnormal patterns
     const abnormalChecks = [
-      this.checkVeryShortStay(daily),
       this.checkLateNightPresence(daily),
       this.checkMultipleEntries(daily),
       this.checkExcessiveEntries(daily),
