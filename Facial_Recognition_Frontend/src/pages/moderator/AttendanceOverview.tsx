@@ -12,7 +12,7 @@ import '../admin/AttendanceOverview.css';
 
 // ── Heatmap data: 5 days × 12 hours (Mon–Fri, 8a–7p)
 // All zeros by default — will show as empty until real data is available
-const HEATMAP_DATA = [
+const EMPTY_HEATMAP: number[][] = [
   [0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0],
@@ -32,16 +32,18 @@ const AttendanceOverview = () => {
   const [monthlyData, setMonthlyData]     = useState<any[]>([]);
   const [peakHoursData, setPeakHoursData] = useState<any[]>([]);
   const [topDaysData, setTopDaysData]     = useState<any[]>([]);
+  const [heatmapGrid, setHeatmapGrid]     = useState<number[][]>(EMPTY_HEATMAP);
 
   const refreshData = async () => {
     setLoading(true);
     try {
-      const [allAtt, todayAtt, monthly, daily, peakHours] = await Promise.all([
+      const [allAtt, todayAtt, monthly, daily, peakHours, heatmap] = await Promise.all([
         attendanceService.getAll(1, 0),
         attendanceService.getTodayAttendance(),
         attendanceService.getMonthlyTrends(),
         attendanceService.getDailyTrends(),
         attendanceService.getPeakHours(),
+        attendanceService.getHeatmapData(),
       ]);
 
       const [col, shs] = await Promise.all([
@@ -70,6 +72,23 @@ const AttendanceOverview = () => {
         presentToday: filtered.length, activeDays: daily.length, attendanceRate });
       setMonthlyData(monthly || []);
       setPeakHoursData(peakHours || []);
+
+      // Build heatmap grid from real data
+      if (heatmap && heatmap.length > 0) {
+        const maxCount = Math.max(...heatmap.map((d: any) => Number(d.count)));
+        const grid = EMPTY_HEATMAP.map(row => [...row]);
+        heatmap.forEach((d: any) => {
+          const rowIdx = Number(d.dow) - 1;
+          const colIdx = Number(d.hour) - 8;
+          if (rowIdx >= 0 && rowIdx < 5 && colIdx >= 0 && colIdx < 12) {
+            const ratio = Number(d.count) / maxCount;
+            grid[rowIdx][colIdx] = ratio > 0.66 ? 3 : ratio > 0.33 ? 2 : ratio > 0 ? 1 : 0;
+          }
+        });
+        setHeatmapGrid(grid);
+      } else {
+        setHeatmapGrid(EMPTY_HEATMAP);
+      }
       setTopDaysData([...(daily || [])].sort((a,b) => b.count - a.count).slice(0,10).map((d,i) => ({
         rank: i+1, date: d.date, count: d.count,
       })));
@@ -243,7 +262,7 @@ const AttendanceOverview = () => {
                 {HEATMAP_DAYS.map(d => <div key={d} className="ao-heatmap-y-label">{d}</div>)}
               </div>
               <div className="ao-heatmap-right">
-                {HEATMAP_DATA.map((row, ri) => (
+                {heatmapGrid.map((row, ri) => (
                   <div key={ri} className="ao-heatmap-row">
                     {row.map((heat, ci) => (
                       <div key={ci} className={`ao-heatmap-cell heat-${heat}`} title={`${HEATMAP_DAYS[ri]} ${HEATMAP_HOURS[ci]}`} />

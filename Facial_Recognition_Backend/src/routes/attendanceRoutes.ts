@@ -46,6 +46,7 @@ router.get('/analytics/monthly', authorizeRoles('admin', 'moderator'), Attendanc
 router.get('/analytics/daily', authorizeRoles('admin', 'moderator'), AttendanceController.getDailyTrends);
 router.get('/analytics/peak-hours', authorizeRoles('admin', 'moderator'), AttendanceController.getPeakHours);
 router.get('/analytics/department', authorizeRoles('admin', 'moderator'), AttendanceController.getDepartmentDistribution);
+router.get('/analytics/heatmap', authorizeRoles('admin', 'moderator'), AttendanceController.getHeatmapData);
 router.get('/analytics/weekly', authorizeRoles('admin', 'moderator'), AttendanceController.getWeeklyPerformance);
 router.get('/:id', authorizeRoles('admin', 'moderator'), AttendanceController.getAttendanceById);
 

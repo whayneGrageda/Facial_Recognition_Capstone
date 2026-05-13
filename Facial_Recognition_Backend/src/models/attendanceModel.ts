@@ -278,6 +278,26 @@ export const AttendanceModel = {
     return rows;
   },
 
+  getHeatmapData: async (): Promise<any[]> => {
+    // Returns count per day-of-week (1=Mon..5=Fri) and hour (8..19)
+    // for the last 90 days, time-in records only
+    const sql = `
+      SELECT
+        EXTRACT(DOW FROM timestamp)::int AS dow,
+        EXTRACT(HOUR FROM timestamp)::int AS hour,
+        COUNT(*) AS count
+      FROM attendance
+      WHERE attendance_type = 'time-in'
+        AND timestamp >= NOW() - INTERVAL '90 days'
+        AND EXTRACT(DOW FROM timestamp) BETWEEN 1 AND 5
+        AND EXTRACT(HOUR FROM timestamp) BETWEEN 8 AND 19
+      GROUP BY dow, hour
+      ORDER BY dow, hour
+    `;
+    const { rows } = await query(sql);
+    return rows;
+  },
+
   getWeeklyPerformance: async (): Promise<any[]> => {
     const sql = `
       SELECT 

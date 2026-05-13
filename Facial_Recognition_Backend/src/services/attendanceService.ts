@@ -99,6 +99,10 @@ export const AttendanceService = {
     return await AttendanceModel.getDepartmentDistribution();
   },
 
+  getHeatmapData: async () => {
+    return await AttendanceModel.getHeatmapData();
+  },
+
   getWeeklyPerformance: async () => {
     return await AttendanceModel.getWeeklyPerformance();
   },

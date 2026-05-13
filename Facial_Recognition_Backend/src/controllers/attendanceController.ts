@@ -192,6 +192,15 @@ export const getDepartmentDistribution = async (req: Request, res: Response) => 
   }
 };
 
+export const getHeatmapData = async (req: Request, res: Response) => {
+  try {
+    const data = await AttendanceService.getHeatmapData();
+    return sendResponse(res, API_MESSAGES.GENERAL.SUCCESS, data);
+  } catch (error) {
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};
+
 export const getWeeklyPerformance = async (req: Request, res: Response) => {
   try {
     const performance = await AttendanceService.getWeeklyPerformance();

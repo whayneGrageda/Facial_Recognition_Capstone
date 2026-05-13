@@ -87,6 +87,11 @@ export const attendanceService = {
     return apiService.get<any[]>('/attendance/analytics/department');
   },
 
+  // Get heatmap data (attendance count by day-of-week and hour)
+  getHeatmapData: () => {
+    return apiService.get<{ dow: number; hour: number; count: number }[]>('/attendance/analytics/heatmap');
+  },
+
   // Get weekly performance for analytics
   getWeeklyPerformance: () => {
     return apiService.get<any[]>('/attendance/analytics/weekly');
