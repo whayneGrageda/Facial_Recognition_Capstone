@@ -1,119 +1,135 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Zap, Shield, BarChart3 } from 'lucide-react';
 import FaceModelBg from '../../assets/Face_model.png';
 import './LandingPage.css';
 
 const LandingPage: React.FC = () => {
   return (
     <div className="landing-page dark">
-      {/* TopNavBar */}
-      <nav className="landing-nav">
-        <div className="landing-nav-container">
-          <Link to="/" className="landing-logo">FaceTrack</Link>
-          <div className="landing-nav-links">
-            <a href="#">Features</a>
-            <a href="#">Security</a>
-            <a href="#">Institutions</a>
-            <a href="#">Pricing</a>
-          </div>
-          <Link to="/login" className="landing-btn-primary">Get Started</Link>
+      {/* Nav */}
+      <nav className="lp-nav">
+        <div className="lp-nav-inner">
+          <Link to="/" className="lp-logo">
+            <span className="lp-logo-icon">◎</span>
+            FACE TRACK
+          </Link>
+          <ul className="lp-nav-links">
+            <li><a href="#features">Protocol</a></li>
+            <li><a href="#stats">Intel</a></li>
+            <li><a href="#footer">Systems</a></li>
+          </ul>
+          <Link to="/login" className="lp-nav-cta">Deploy Now</Link>
         </div>
       </nav>
 
       <main>
-        {/* Hero Section */}
-        <section className="landing-hero">
-          {/* Background Container */}
-          <div className="landing-hero-bg">
-            <div 
-              className="landing-hero-bg-image" 
-              style={{ backgroundImage: `url(${FaceModelBg})` }}
-            >
-              <div className="landing-hero-overlay-dark"></div>
-              <div className="landing-hero-overlay-gradient"></div>
+        {/* Hero */}
+        <section className="lp-hero">
+          {/* Face model as background */}
+          <div className="lp-hero-bg">
+            <div className="lp-face-wrapper">
+              <img src={FaceModelBg} alt="" className="lp-hero-bg-img" />
+              {/* Pulsing nodes positioned relative to the face image */}
+              <div className="lp-node" style={{ bottom: '52%', right: '38%', animationDelay: '0s' }} />
+              <div className="lp-node" style={{ bottom: '44%', right: '28%', animationDelay: '0.5s' }} />
+              <div className="lp-node" style={{ bottom: '45%', right: '40%', animationDelay: '0.2s' }} />
+              <div className="lp-node" style={{ bottom: '35%', right: '35%', animationDelay: '0.8s' }} />
+              <div className="lp-node" style={{ bottom: '55%', right: '45%', animationDelay: '1.2s' }} />
+              <div className="lp-node" style={{ bottom: '40%', right: '25%', animationDelay: '0.4s' }} />
             </div>
-            {/* Pulsing Landmark Nodes */}
-            <div className="landing-hero-nodes-container">
-              <div className="node-pulse" style={{ top: '40%', left: '63%', animationDelay: '0s' }}></div>
-              <div className="node-pulse" style={{ top: '43%', left: '72%', animationDelay: '0.5s' }}></div>
-              <div className="node-pulse" style={{ top: '55%', left: '62%', animationDelay: '0.2s' }}></div>
-              <div className="node-pulse" style={{ top: '68%', left: '65%', animationDelay: '0.8s' }}></div>
-              <div className="node-pulse" style={{ top: '43%', left: '58%', animationDelay: '1.2s' }}></div>
-              <div className="node-pulse" style={{ top: '58%', left: '75%', animationDelay: '0.4s' }}></div>
-            </div>
+            <div className="lp-hero-bg-overlay" />
           </div>
+          {/* Grid background */}
+          <div className="lp-hero-grid" />
+          {/* Glows */}
+          <div className="lp-glow lp-glow-gold" />
+          <div className="lp-glow lp-glow-brown" />
 
-          {/* Content Container */}
-          <div className="landing-hero-content-container">
-            <div className="landing-hero-content">
-              <div className="landing-badge fade-up">
-                <span className="landing-badge-dot animate-pulse"></span>
-                Next-Generation AI Access
-              </div>
-              <h1 className="landing-title fade-up fade-up-delay-1">
-                Automated AI Attendance for Modern Institutions
-              </h1>
-              <p className="landing-subtitle fade-up fade-up-delay-2">
-                Secure, seamless, and lightning-fast facial recognition for schools and universities. Elevate campus security while streamlining daily operations.
-              </p>
-              <div className="landing-actions fade-up fade-up-delay-3">
-                <Link to="/login" className="landing-btn-primary with-icon">
-                  Get Started
-                  <span className="material-symbols-outlined icon-filled">arrow_forward</span>
-                </Link>
-                <a className="landing-btn-secondary" href="#">
-                  Learn More
-                </a>
-              </div>
-              <div className="landing-features fade-up fade-up-delay-3">
-                <div className="landing-feature-item">
-                  <span className="material-symbols-outlined text-gold-light">bolt</span> Fast
-                </div>
-                <div className="landing-feature-item">
-                  <span className="material-symbols-outlined text-gold-light">lock</span> Secure
-                </div>
-                <div className="landing-feature-item">
-                  <span className="material-symbols-outlined text-gold-light">verified</span> Accurate
-                </div>
-                <div className="landing-feature-item">
-                  <span className="material-symbols-outlined text-gold-light">schedule</span> Real-time
-                </div>
-              </div>
+          {/* Content — left aligned over the background */}
+          <div className="lp-hero-content">
+            <div className="lp-eyebrow">
+              <span className="lp-live-dot" />
+              Threat Detection Active
+            </div>
+
+            <h1 className="lp-title">
+              <span className="lp-title-gold">Zero Breach.</span><br />
+              <span className="lp-title-gold">Zero</span><br />
+              <span className="lp-title-gold">Compromise.</span>
+            </h1>
+
+            <p className="lp-sub">
+              FaceTrack is a <strong>military-grade facial recognition security platform</strong> — identifying threats, verifying clearances, and logging every entry in real time. No blind spots. No exceptions.
+            </p>
+
+            <div className="lp-cta-row">
+              <Link to="/login" className="lp-btn-primary">Deploy System</Link>
+              <a href="#features" className="lp-btn-ghost">View Intel</a>
+            </div>
+
+            <div className="lp-status-row">
+              <span className="lp-status-item">
+                <span className="lp-status-dot">•</span> SOC 2 Type II Certified
+              </span>
+              <span className="lp-status-item">
+                <span className="lp-status-dot">•</span> 256-bit AES Encrypted
+              </span>
+              <span className="lp-status-item">
+                <span className="lp-status-dot">•</span> 99.97% Accuracy
+              </span>
             </div>
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section className="landing-stats">
-          <div className="landing-stats-container">
-            <div className="landing-stats-grid">
-              <div className="landing-stat-item">
-                <div className="landing-stat-value">&lt; 1s</div>
-                <div className="landing-stat-label">Matching Speed</div>
-              </div>
-              <div className="landing-stat-item">
-                <div className="landing-stat-value">99.8%</div>
-                <div className="landing-stat-label">Accuracy Rate</div>
-              </div>
-              <div className="landing-stat-item">
-                <div className="landing-stat-value">Automated</div>
-                <div className="landing-stat-label">Attendance Tracking</div>
-              </div>
+        {/* Stats */}
+        <section className="lp-stats" id="stats">
+          <div className="lp-stats-grid">
+            <div className="lp-stat">
+              <div className="lp-stat-value">&lt; 1s</div>
+              <div className="lp-stat-label">Matching Speed</div>
+            </div>
+            <div className="lp-stat">
+              <div className="lp-stat-value">99.8%</div>
+              <div className="lp-stat-label">Accuracy Rate</div>
+            </div>
+            <div className="lp-stat">
+              <div className="lp-stat-value">Automated</div>
+              <div className="lp-stat-label">Attendance Tracking</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="lp-features" id="features">
+          <div className="lp-features-grid">
+            <div className="lp-feature-card">
+              <div className="lp-feature-icon"><Zap size={24} /></div>
+              <h3>Real-Time Detection</h3>
+              <p>Sub-second facial recognition with live threat assessment and instant access control.</p>
+            </div>
+            <div className="lp-feature-card">
+              <div className="lp-feature-icon"><Shield size={24} /></div>
+              <h3>Anti-Spoofing AI</h3>
+              <p>Advanced liveness detection blocks printed photos, screen replays, and deepfake attempts.</p>
+            </div>
+            <div className="lp-feature-card">
+              <div className="lp-feature-icon"><BarChart3 size={24} /></div>
+              <h3>Smart Analytics</h3>
+              <p>AI-powered attendance insights, anomaly detection, and automated reporting.</p>
             </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="landing-footer">
-        <div className="landing-footer-container">
-          <div className="landing-footer-brand">
-            <div className="landing-footer-logo">FaceTrack</div>
-            <p className="landing-footer-copy">
-              © 2024 Team Jarvis. Securing Educational Excellence.
-            </p>
+      <footer className="lp-footer" id="footer">
+        <div className="lp-footer-inner">
+          <div className="lp-footer-brand">
+            <span className="lp-footer-logo">FaceTrack</span>
+            <p>© 2024 Team Jarvis. Securing Educational Excellence.</p>
           </div>
-          <div className="landing-footer-links">
+          <div className="lp-footer-links">
             <a href="#">Privacy Policy</a>
             <a href="#">Terms of Service</a>
             <a href="#">Security Whitepaper</a>
