@@ -82,7 +82,7 @@ def recognition_process_worker(frame_queue, results_queue, stop_event, attendanc
                     del dwell_trackers[k]
 
                 for i, name in enumerate(names):
-                    if name != "Unknown" and name != "SPOOF" and name != "SPOOF_CANDIDATE":
+                    if name != "Unknown" and name != "SPOOF":
                         key = f"{name}_{attendance_type}"
                         last_time = last_recognition_time.get(key)
                         

@@ -34,16 +34,13 @@ except ImportError:
 class TemporalVoter:
     """Stabilizes identity across consecutive frames using confidence-weighted voting with IoU matching."""
 
-    def __init__(self, window: int = 10, confirm_threshold: int = 6, iou_threshold: float = 0.3, spoof_block_duration: float = 10.0):
+    def __init__(self, window: int = 10, confirm_threshold: int = 6, iou_threshold: float = 0.3):
         # tracks: list of dicts: {'bbox': bbox, 'history': deque()}
         self.tracks = []
         self.window = window
         self.threshold = confirm_threshold
         self.iou_threshold = iou_threshold
         self._cleanup_counter = 0
-        # Spoof blocking: maps track index to expiry timestamp
-        self.spoof_block_duration = spoof_block_duration
-        self._spoof_blocked_tracks = []  # list of {'bbox': bbox, 'blocked_until': float}
 
     def _compute_iou(self, boxA, boxB):
         # top, right, bottom, left
@@ -63,36 +60,13 @@ class TemporalVoter:
         return iou
 
     def vote(self, bbox: Tuple[int, int, int, int], name: str, confidence: float):
-        """Vote on identity for a face at a given location using IoU matching.
-        
-        SPOOF is treated as an instant override — it bypasses voting entirely
-        and blocks the track from being recognized for spoof_block_duration seconds.
-        
-        SPOOF_CANDIDATE is treated as a regular vote — it needs to accumulate
-        enough votes (confirm_threshold) before being confirmed as SPOOF.
-        This prevents false positives from borderline liveness scores.
-        """
+        """Vote on identity for a face at a given location using IoU matching."""
         now = time.time()
         
         # Periodic cleanup — every call, but only does work if needed
         self._cleanup_counter += 1
         if self._cleanup_counter % 10 == 0 or len(self.tracks) > 50:
             self._cleanup_stale()
-            self._cleanup_spoof_blocks()
-
-        # If this face is a HIGH-CONFIDENCE SPOOF, immediately block the track
-        if name == "SPOOF":
-            self._block_track_for_spoof(bbox, now)
-            self._poison_track_history(bbox, now)
-            return "SPOOF", confidence, "CONFIRMED"
-
-        # Check if this bbox is in a spoof-blocked region
-        if self._is_spoof_blocked(bbox, now):
-            return "SPOOF", 1.0, "CONFIRMED"
-
-        # SPOOF_CANDIDATE goes through normal voting — needs multiple frames to confirm
-        # This prevents single-frame false positives from blocking real people
-        vote_name = name
 
         # Find best matching track via IoU
         best_iou = 0.0
@@ -107,12 +81,12 @@ class TemporalVoter:
         if best_iou > self.iou_threshold and best_track_idx != -1:
             # Update existing track
             self.tracks[best_track_idx]['bbox'] = bbox
-            self.tracks[best_track_idx]['history'].append((vote_name, confidence, now))
+            self.tracks[best_track_idx]['history'].append((name, confidence, now))
             track_history = self.tracks[best_track_idx]['history']
         else:
             # Create new track
             history = deque(maxlen=self.window)
-            history.append((vote_name, confidence, now))
+            history.append((name, confidence, now))
             self.tracks.append({'bbox': bbox, 'history': history})
             track_history = history
 
@@ -132,11 +106,6 @@ class TemporalVoter:
         avg_conf = name_scores[top_name]['total_confidence'] / top_count
 
         if top_count >= self.threshold:
-            # If SPOOF_CANDIDATE won the vote, it's now confirmed — block the region
-            if top_name == "SPOOF_CANDIDATE":
-                self._block_track_for_spoof(bbox, now)
-                self._poison_track_history(bbox, now)
-                return "SPOOF", float(avg_conf), "CONFIRMED"
             return top_name, float(avg_conf), "CONFIRMED"
 
         return name, confidence, "PENDING"
@@ -145,53 +114,6 @@ class TemporalVoter:
         """Remove tracks that haven't been updated recently."""
         now = time.time()
         self.tracks = [t for t in self.tracks if t['history'] and (now - t['history'][-1][2]) <= max_age]
-
-    def _cleanup_spoof_blocks(self):
-        """Remove expired spoof blocks."""
-        now = time.time()
-        self._spoof_blocked_tracks = [
-            b for b in self._spoof_blocked_tracks if b['blocked_until'] > now
-        ]
-
-    def _is_spoof_blocked(self, bbox: Tuple[int, int, int, int], now: float) -> bool:
-        """Check if a bbox overlaps with any spoof-blocked region."""
-        for block in self._spoof_blocked_tracks:
-            if block['blocked_until'] <= now:
-                continue
-            iou = self._compute_iou(bbox, block['bbox'])
-            if iou > self.iou_threshold:
-                return True
-        return False
-
-    def _block_track_for_spoof(self, bbox: Tuple[int, int, int, int], now: float):
-        """Block a spatial region from being recognized for spoof_block_duration seconds."""
-        # Update existing block if overlapping, otherwise create new
-        for block in self._spoof_blocked_tracks:
-            iou = self._compute_iou(bbox, block['bbox'])
-            if iou > self.iou_threshold:
-                # Refresh the block timer and update bbox
-                block['bbox'] = bbox
-                block['blocked_until'] = now + self.spoof_block_duration
-                return
-        
-        self._spoof_blocked_tracks.append({
-            'bbox': bbox,
-            'blocked_until': now + self.spoof_block_duration
-        })
-
-    def _poison_track_history(self, bbox: Tuple[int, int, int, int], now: float):
-        """Clear the voting history for a track that was flagged as SPOOF.
-        
-        This prevents previously accumulated 'real' votes from overriding
-        the SPOOF detection on subsequent frames.
-        """
-        for track in self.tracks:
-            iou = self._compute_iou(bbox, track['bbox'])
-            if iou > self.iou_threshold:
-                # Clear the history — the track is compromised
-                track['history'].clear()
-                track['history'].append(("SPOOF", 1.0, now))
-                return
 
 
 class FaceRecognizer:
@@ -210,8 +132,7 @@ class FaceRecognizer:
 
         # Temporal voting for identity stabilization
         # Reduced window for faster confirmation while maintaining accuracy
-        spoof_block_seconds = float(getattr(config, 'SPOOF_BLOCK_DURATION', 10.0))
-        self.voter = TemporalVoter(window=7, confirm_threshold=4, spoof_block_duration=spoof_block_seconds)
+        self.voter = TemporalVoter(window=7, confirm_threshold=4)
 
         # FAISS index for fast similarity search
         self.faiss_index = None
@@ -521,47 +442,26 @@ class FaceRecognizer:
             # Match against known faces
             name, confidence = self._match_face(feature)
 
-            # Apply liveness detection if enabled — run on ALL faces, not just recognized ones.
-            # This ensures spoofing is caught even before identity matching succeeds.
+            # Apply liveness detection if enabled
             bbox = (top, right, bottom, left)
             is_live = True
 
-            if self.enable_liveness:
+            # Only run liveness if the person is recognized or if we want to run it on everyone.
+            # Running it only on recognized faces saves compute.
+            if self.enable_liveness and name != "Unknown":
+                # We need the original unresized frame here. wait, `frame` is passed to recognize_faces.
                 is_live, liveness_score = self.liveness_detector.is_live(frame, bbox)
                 if not is_live:
-                    # Only flag as SPOOF if the model is highly confident (score < instant_threshold
-                    # means the model is very sure it's fake). Borderline cases are
-                    # passed to the temporal voter as "SPOOF_CANDIDATE" but won't instant-block —
-                    # they need to accumulate votes like any other identity.
-                    spoof_confidence = 1.0 - liveness_score  # Higher = more confident it's fake
-                    instant_threshold = getattr(self.config, 'SPOOF_INSTANT_THRESHOLD', 0.4)
-                    
-                    if liveness_score < instant_threshold:
-                        # HIGH confidence spoof — instant block
-                        name = "SPOOF"
-                        confidence = spoof_confidence
-                    else:
-                        # BORDERLINE — let temporal voting decide (needs multiple frames)
-                        # Don't override name yet; pass through voter as a soft signal
-                        name = "SPOOF_CANDIDATE"
-                        confidence = spoof_confidence
+                    name = "SPOOF"
+                    confidence = 1.0 - liveness_score
 
             # Apply temporal voting for stability
-            # Note: If name is "SPOOF", the voter will instantly confirm it
-            # and block this spatial region from future recognition attempts.
-            # "SPOOF_CANDIDATE" is treated as a regular vote — needs threshold to confirm.
             voted_name, voted_conf, status = self.voter.vote(bbox, name, confidence)
 
             # Use voted result if confirmed, otherwise use raw result
             if status == "CONFIRMED":
                 name = voted_name
                 confidence = voted_conf
-            
-            # Normalize SPOOF_CANDIDATE to SPOOF for output if it survived voting
-            if name == "SPOOF_CANDIDATE":
-                # Not confirmed yet — treat as the original recognized identity
-                # Re-run match to get the real name back (or show Unknown)
-                name, confidence = self._match_face(feature)
 
             locations.append(bbox)
             names.append(name)
