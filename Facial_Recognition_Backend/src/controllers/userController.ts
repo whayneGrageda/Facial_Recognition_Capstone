@@ -214,3 +214,22 @@ export const bulkDeleteUsers = async (req: Request, res: Response) => {
     return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
   }
 };
+
+export const exportToCSV = async (req: Request, res: Response) => {
+  try {
+    const filters = {
+      course_id: req.query.course_id ? parseInt(req.query.course_id as string) : undefined,
+      year_id: req.query.year_id ? parseInt(req.query.year_id as string) : undefined,
+      search: req.query.search as string,
+    };
+
+    const csv = await UserService.exportToCSV(filters);
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="college_users_${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting users to CSV:', error);
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};

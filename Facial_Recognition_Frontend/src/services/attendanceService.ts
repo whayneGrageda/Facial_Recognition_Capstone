@@ -93,8 +93,69 @@ export const attendanceService = {
   },
 
   // Get report (CSV)
-  getReport: (filters?: AttendanceFilters) => {
-    return apiService.download('/attendance/report', filters);
+  getReport: async (filters?: AttendanceFilters) => {
+    const blob = await apiService.download('/attendance/report', filters);
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.download = `attendance_report_${timestamp}.pdf`;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
+  // Export to CSV
+  exportToCSV: async (filters?: AttendanceFilters) => {
+    const blob = await apiService.download('/attendance/export', filters);
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.download = `attendance_export_${timestamp}.csv`;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
+  // Export analytics to CSV (for Attendance Overview page)
+  exportAnalyticsToCSV: async () => {
+    const blob = await apiService.download('/attendance/export-analytics');
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.download = `attendance_analytics_${timestamp}.csv`;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 
   // Get user attendance statistics

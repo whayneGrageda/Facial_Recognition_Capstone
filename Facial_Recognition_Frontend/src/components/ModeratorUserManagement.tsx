@@ -72,8 +72,26 @@ const ModeratorUserManagement = ({ userType }: ModeratorUserManagementProps) => 
     fetchUsers();
   }, [userType, currentPage, searchQuery, selectedFilter, selectedYear]);
 
-  const downloadCSV = () => {
-    console.log('Downloading CSV...');
+  const downloadCSV = async () => {
+    try {
+      setLoading(true);
+      const filters = {
+        search: searchQuery || undefined,
+        course: selectedFilter || undefined,
+        year: selectedYear || undefined,
+      };
+      
+      if (userType === 'college') {
+        await userService.college.exportToCSV(filters);
+      } else if (userType === 'shs') {
+        await userService.shs.exportToCSV(filters);
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearFilters = () => {

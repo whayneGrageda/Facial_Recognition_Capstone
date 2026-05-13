@@ -39,6 +39,8 @@ router.get('/', AttendanceController.getAttendance);
 router.get('/today', authorizeRoles('admin', 'moderator'), AttendanceController.getTodayAttendance);
 router.get('/stats', authorizeRoles('admin', 'moderator'), AttendanceController.getAttendanceStats);
 router.get('/report', authorizeRoles('admin', 'moderator'), AttendanceController.downloadReports);
+router.get('/export', authorizeRoles('admin', 'moderator'), AttendanceController.exportToCSV);
+router.get('/export-analytics', authorizeRoles('admin', 'moderator'), AttendanceController.exportAnalyticsToCSV);
 router.get('/date-range', authorizeRoles('admin', 'moderator'), AttendanceController.getAttendanceByDateRange);
 router.get('/analytics/monthly', authorizeRoles('admin', 'moderator'), AttendanceController.getMonthlyTrends);
 router.get('/analytics/daily', authorizeRoles('admin', 'moderator'), AttendanceController.getDailyTrends);

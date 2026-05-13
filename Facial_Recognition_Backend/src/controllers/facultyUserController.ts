@@ -209,3 +209,21 @@ export const bulkDeleteFacultyUsers = async (req: Request, res: Response) => {
     return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
   }
 };
+
+export const exportToCSV = async (req: Request, res: Response) => {
+  try {
+    const filters = {
+      department_id: req.query.department_id ? parseInt(req.query.department_id as string) : undefined,
+      search: req.query.search as string,
+    };
+
+    const csv = await FacultyUserService.exportToCSV(filters);
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="faculty_users_${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting faculty users to CSV:', error);
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};

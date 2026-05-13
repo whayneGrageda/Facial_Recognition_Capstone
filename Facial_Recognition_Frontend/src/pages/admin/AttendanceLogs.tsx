@@ -157,19 +157,7 @@ const AttendanceLogs = () => {
         search: searchQuery || undefined,
       };
 
-      const blob = await attendanceService.getReport(filters);
-      
-      // Create a URL for the blob and trigger download
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `attendance_report_${new Date().toISOString().split('T')[0]}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      await attendanceService.getReport(filters);
     } catch (error) {
       console.error('Error downloading report:', error);
       alert('Failed to download report. Please try again.');

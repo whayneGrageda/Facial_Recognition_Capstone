@@ -223,3 +223,40 @@ export const getUserStats = async (req: Request, res: Response) => {
     return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
   }
 };
+
+export const exportToCSV = async (req: Request, res: Response) => {
+  try {
+    const filters = {
+      user_id: req.query.user_id ? parseInt(req.query.user_id as string) : undefined,
+      user_type: req.query.user_type as string,
+      date: req.query.date as string,
+      start_date: req.query.start_date as string,
+      end_date: req.query.end_date as string,
+      attendance_type: req.query.attendance_type as string,
+      search: req.query.search as string,
+    };
+
+    const csvContent = await AttendanceService.generateCSV(filters);
+    
+    const filename = `attendance_export_${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(csvContent);
+  } catch (error) {
+    console.error('Error generating CSV:', error);
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const exportAnalyticsToCSV = async (req: Request, res: Response) => {
+  try {
+    const csv = await AttendanceService.exportAnalyticsToCSV();
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance_analytics_${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting analytics to CSV:', error);
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};

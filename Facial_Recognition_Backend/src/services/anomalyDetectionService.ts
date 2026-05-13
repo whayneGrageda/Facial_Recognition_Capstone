@@ -48,7 +48,7 @@ export const AnomalyDetectionService = {
       lateNightStart: 18, // 6 PM
       lateNightEnd: 22, // 10 PM
       multipleEntryWindow: 5, // minutes
-      multipleEntryThreshold: 2, // More than 2 entries
+      multipleEntryThreshold: 3, // More than 3 entries (4+)
       longDuration: 12, // More than 12 hours
       maxLongDuration: 16, // Up to 16 hours
     },
@@ -73,6 +73,7 @@ export const AnomalyDetectionService = {
       this.checkMidnightAccess(daily),
       this.checkExtremeDuration(daily),
       this.checkRapidMultipleEntries(daily),
+      this.checkRapidAlternatingPattern(daily),
       this.checkImpossibleSequence(daily),
     ];
 
@@ -91,9 +92,9 @@ export const AnomalyDetectionService = {
     // Check for abnormal patterns
     const abnormalChecks = [
       this.checkVeryShortStay(daily),
-      this.checkLateArrival(daily),
       this.checkLateNightPresence(daily),
       this.checkMultipleEntries(daily),
+      this.checkExcessiveEntries(daily),
       this.checkIncompleteDay(daily),
       this.checkNoTimeOut(daily),
       this.checkVeryLongStay(daily),
@@ -145,29 +146,75 @@ export const AnomalyDetectionService = {
   },
 
   /**
+   * DANGEROUS: Check for rapid alternating time-in/time-out pattern
+   * This detects gaming behavior where someone repeatedly times in and out
+   */
+  checkRapidAlternatingPattern(daily: DailyAttendance): string | null {
+    // Sort all entries by timestamp
+    const sortedEntries = [...daily.entries].sort((a, b) => 
+      a.timestamp.getTime() - b.timestamp.getTime()
+    );
+
+    if (sortedEntries.length < 4) return null;
+
+    // Check for alternating pattern within a short time window (10 minutes)
+    const windowMinutes = 10;
+    let alternatingCount = 0;
+    let maxAlternatingCount = 0;
+
+    for (let i = 0; i < sortedEntries.length - 1; i++) {
+      const current = sortedEntries[i];
+      const next = sortedEntries[i + 1];
+      const diffMinutes = (next.timestamp.getTime() - current.timestamp.getTime()) / (1000 * 60);
+
+      // Check if they alternate and are within window
+      if (diffMinutes <= windowMinutes && current.attendance_type !== next.attendance_type) {
+        alternatingCount++;
+        maxAlternatingCount = Math.max(maxAlternatingCount, alternatingCount);
+      } else {
+        alternatingCount = 0;
+      }
+    }
+
+    // If we have 3+ alternations (6+ entries), it's suspicious
+    if (maxAlternatingCount >= 3) {
+      return `Rapid alternating time-in/out pattern (${maxAlternatingCount + 1} alternations) - possible system gaming`;
+    }
+
+    return null;
+  },
+
+  /**
    * DANGEROUS: Check for rapid multiple entries (3+ in 1 minute)
    */
   checkRapidMultipleEntries(daily: DailyAttendance): string | null {
     const { rapidEntryWindow, rapidEntryThreshold } = this.config.dangerous;
-    const timeIns = daily.entries.filter((e) => e.attendance_type === 'time-in');
+    
+    // Sort all entries by timestamp
+    const sortedEntries = [...daily.entries].sort((a, b) => 
+      a.timestamp.getTime() - b.timestamp.getTime()
+    );
 
-    if (timeIns.length < rapidEntryThreshold) return null;
+    if (sortedEntries.length < rapidEntryThreshold) return null;
 
-    // Check each time-in against others
-    for (let i = 0; i < timeIns.length - 1; i++) {
-      let rapidCount = 1;
-      const baseTime = timeIns[i].timestamp.getTime();
-
-      for (let j = i + 1; j < timeIns.length; j++) {
-        const diffMinutes = (timeIns[j].timestamp.getTime() - baseTime) / (1000 * 60);
+    // Check for any entries (time-in or time-out) within the window
+    for (let i = 0; i < sortedEntries.length - (rapidEntryThreshold - 1); i++) {
+      const baseTime = sortedEntries[i].timestamp.getTime();
+      const windowEnd = baseTime + (rapidEntryWindow * 60 * 1000);
+      
+      let count = 1;
+      for (let j = i + 1; j < sortedEntries.length; j++) {
+        const entryTime = sortedEntries[j].timestamp.getTime();
         
-        if (diffMinutes <= rapidEntryWindow) {
-          rapidCount++;
+        if (entryTime <= windowEnd) {
+          count++;
+        } else {
+          break; // No need to check further
         }
       }
 
-      if (rapidCount >= rapidEntryThreshold) {
-        return `Rapid multiple entries (${rapidCount} entries within ${rapidEntryWindow} minute)`;
+      if (count >= rapidEntryThreshold) {
+        return `Rapid multiple entries (${count} entries within ${rapidEntryWindow} minute) - possible system gaming`;
       }
     }
 
@@ -199,22 +246,6 @@ export const AnomalyDetectionService = {
   },
 
   /**
-   * ABNORMAL: Check for late arrival (after 10 AM)
-   */
-  checkLateArrival(daily: DailyAttendance): string | null {
-    const { veryLateArrival } = this.config.abnormal;
-
-    if (daily.timeIn) {
-      const hour = daily.timeIn.getHours();
-      if (hour >= veryLateArrival) {
-        return `Late arrival (${daily.timeIn.toLocaleTimeString()})`;
-      }
-    }
-
-    return null;
-  },
-
-  /**
    * ABNORMAL: Check for late night presence (6 PM - 10 PM)
    */
   checkLateNightPresence(daily: DailyAttendance): string | null {
@@ -232,30 +263,55 @@ export const AnomalyDetectionService = {
   },
 
   /**
-   * ABNORMAL: Check for multiple entries (2+ within 5 minutes)
+   * ABNORMAL: Check for multiple entries (3+ within 5 minutes)
    */
   checkMultipleEntries(daily: DailyAttendance): string | null {
     const { multipleEntryWindow, multipleEntryThreshold } = this.config.abnormal;
-    const timeIns = daily.entries.filter((e) => e.attendance_type === 'time-in');
+    
+    // Sort all entries by timestamp
+    const sortedEntries = [...daily.entries].sort((a, b) => 
+      a.timestamp.getTime() - b.timestamp.getTime()
+    );
 
-    if (timeIns.length <= multipleEntryThreshold) return null;
+    if (sortedEntries.length <= multipleEntryThreshold) return null;
 
-    // Check for entries within window
-    for (let i = 0; i < timeIns.length - 1; i++) {
-      const baseTime = timeIns[i].timestamp.getTime();
+    // Check for any entries within the window
+    for (let i = 0; i < sortedEntries.length - multipleEntryThreshold; i++) {
+      const baseTime = sortedEntries[i].timestamp.getTime();
+      const windowEnd = baseTime + (multipleEntryWindow * 60 * 1000);
+      
       let count = 1;
-
-      for (let j = i + 1; j < timeIns.length; j++) {
-        const diffMinutes = (timeIns[j].timestamp.getTime() - baseTime) / (1000 * 60);
+      for (let j = i + 1; j < sortedEntries.length; j++) {
+        const entryTime = sortedEntries[j].timestamp.getTime();
         
-        if (diffMinutes <= multipleEntryWindow) {
+        if (entryTime <= windowEnd) {
           count++;
+        } else {
+          break;
         }
       }
 
       if (count > multipleEntryThreshold) {
-        return `Multiple entries (${count} entries within ${multipleEntryWindow} minutes)`;
+        return `Multiple entries (${count} entries within ${multipleEntryWindow} minutes) - unusual pattern`;
       }
+    }
+
+    return null;
+  },
+
+  /**
+   * ABNORMAL: Check for excessive entries per day
+   */
+  checkExcessiveEntries(daily: DailyAttendance): string | null {
+    const totalEntries = daily.entries.length;
+    
+    // Normal is 2 entries (1 time-in, 1 time-out)
+    // 4 entries might be acceptable (forgot to time out, came back)
+    // 6+ entries is suspicious
+    if (totalEntries >= 10) {
+      return `Excessive entries (${totalEntries} total entries in one day) - highly unusual`;
+    } else if (totalEntries >= 6) {
+      return `Multiple entries (${totalEntries} total entries in one day) - unusual pattern`;
     }
 
     return null;

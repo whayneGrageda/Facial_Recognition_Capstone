@@ -161,4 +161,43 @@ export const FacultyUserService = {
       }
     }
   },
+
+  exportToCSV: async (filters?: any) => {
+    const { CSVExport } = await import('../utils/csvExport.js');
+    
+    // Fetch all users (max 10000 for safety)
+    const users = await FacultyUserModel.getAll(10000, 0, filters);
+    const totalCount = await FacultyUserModel.getTotalCount(filters);
+    
+    // Define CSV headers
+    const headers = [
+      { key: 'id', label: 'ID' },
+      { key: 'employee_id', label: 'Employee ID' },
+      { key: 'first_name', label: 'First Name' },
+      { key: 'last_name', label: 'Last Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'department_name', label: 'Department' },
+      { key: 'created_at', label: 'Registered Date' },
+    ];
+    
+    // Format data for CSV
+    const data = users.map((user: any) => ({
+      id: user.id,
+      employee_id: user.employee_id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      department_name: user.department_name || 'N/A',
+      created_at: new Date(user.created_at).toLocaleDateString(),
+    }));
+    
+    // Generate summary
+    const summary = [
+      { label: 'Total Users', value: totalCount },
+      { label: 'Export Date', value: new Date().toLocaleString() },
+      { label: 'User Type', value: 'Faculty' },
+    ];
+    
+    return CSVExport.generateCSVWithSummary(data, headers, summary);
+  },
 };

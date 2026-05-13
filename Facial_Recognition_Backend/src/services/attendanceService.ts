@@ -1,6 +1,7 @@
 import { AttendanceModel } from '../models/attendanceModel.js';
 import { CreateAttendanceRequest } from '../types/attendanceEntity.js';
 import { NotificationService } from './notificationService.js';
+import { AnomalyDetectionService } from './anomalyDetectionService.js';
 import { query } from '../db/index.js';
 import pdfmake from 'pdfmake';
 
@@ -106,18 +107,42 @@ export const AttendanceService = {
     // Fetch all records for the report (max 10000 for safety)
     const logs = await AttendanceModel.getAll(10000, 0, filters);
 
-    // Group logs for analysis
+    // Group logs by user and date for analysis
     const grouped = logs.reduce((acc: any, log: any) => {
       const dateStr = new Date(log.timestamp).toISOString().split('T')[0];
       const key = `${log.user_id}_${dateStr}`;
-      if (!acc[key]) acc[key] = { in: null, out: null, name: log.user_name, user_id: log.user_id, date: dateStr, user_type: log.user_type };
       
-      if (log.attendance_type === 'time-in' && (!acc[key].in || log.timestamp < acc[key].in.timestamp)) {
-        acc[key].in = log;
+      if (!acc[key]) {
+        acc[key] = {
+          userId: log.user_id,
+          userName: log.user_name,
+          userType: log.user_type,
+          date: dateStr,
+          timeIn: null,
+          timeOut: null,
+          duration: 0,
+          entries: []
+        };
       }
-      if (log.attendance_type === 'time-out' && (!acc[key].out || log.timestamp > acc[key].out.timestamp)) {
-        acc[key].out = log;
+      
+      // Add all entries for anomaly detection
+      acc[key].entries.push({
+        id: log.id,
+        user_id: log.user_id,
+        user_type: log.user_type,
+        timestamp: new Date(log.timestamp),
+        attendance_type: log.attendance_type,
+        user_name: log.user_name
+      });
+      
+      // Track first time-in and last time-out
+      if (log.attendance_type === 'time-in' && (!acc[key].timeIn || log.timestamp < acc[key].timeIn)) {
+        acc[key].timeIn = new Date(log.timestamp);
       }
+      if (log.attendance_type === 'time-out' && (!acc[key].timeOut || log.timestamp > acc[key].timeOut)) {
+        acc[key].timeOut = new Date(log.timestamp);
+      }
+      
       return acc;
     }, {});
 
@@ -125,64 +150,50 @@ export const AttendanceService = {
     const stats = { Normal: 0, Abnormal: 0, Dangerous: 0 };
     const uniqueUsers = new Set<number>();
 
-    Object.values(grouped).forEach((group: any) => {
-      let status = "Normal";
-      let statement = "Regular attendance pattern.";
-      let durationStr = "N/A";
+    Object.values(grouped).forEach((daily: any) => {
+      // Calculate duration in hours
+      if (daily.timeIn && daily.timeOut) {
+        daily.duration = (daily.timeOut.getTime() - daily.timeIn.getTime()) / (1000 * 60 * 60);
+      }
+
+      // Use AnomalyDetectionService for proper analysis
+      const anomalyResult = AnomalyDetectionService.analyzeDailyAttendance(daily);
+      
+      // Track unique users
+      uniqueUsers.add(daily.userId);
+
+      // Format times
       let inTimeStr = "MISSING";
       let outTimeStr = "MISSING";
+      let durationStr = "N/A";
 
-      // Track unique users
-      uniqueUsers.add(group.user_id);
-
-      if (group.in && group.out) {
-        const inTime = new Date(group.in.timestamp);
-        const outTime = new Date(group.out.timestamp);
-        const duration = Math.round((outTime.getTime() - inTime.getTime()) / (1000 * 60));
-        
-        // Format duration dynamically
-        const hours = Math.floor(duration / 60);
-        const mins = duration % 60;
+      if (daily.timeIn) {
+        inTimeStr = daily.timeIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      if (daily.timeOut) {
+        outTimeStr = daily.timeOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      if (daily.duration > 0) {
+        const hours = Math.floor(daily.duration);
+        const mins = Math.round((daily.duration - hours) * 60);
         if (hours > 0) {
           durationStr = mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
         } else {
           durationStr = `${mins}m`;
         }
-        
-        inTimeStr = inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        outTimeStr = outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const inHour = inTime.getHours();
-        const outHour = outTime.getHours();
-
-        if (duration > 720) {
-          status = "Dangerous";
-          statement = "Extremely long shift detected (>12h).";
-        } else if (inHour >= 21 || outHour >= 21 || inHour <= 4) {
-          status = "Dangerous";
-          statement = "Late night activity detected.";
-        } else if (inHour >= 10) {
-          status = "Abnormal";
-          statement = "Late arrival (after 10:00 AM).";
-        } else if (outHour < 15) {
-          status = "Abnormal";
-          statement = "Early departure (before 3:00 PM).";
-        } else if (duration < 60) {
-          status = "Abnormal";
-          statement = "Short stay (<1h).";
-        }
-      } else {
-        status = "Abnormal";
-        statement = "Missing " + (group.in ? "Time-Out" : "Time-In") + ".";
-        if (group.in) inTimeStr = new Date(group.in.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        if (group.out) outTimeStr = new Date(group.out.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
+
+      // Capitalize status for display
+      const status = anomalyResult.status.charAt(0).toUpperCase() + anomalyResult.status.slice(1);
+      const statement = anomalyResult.reasons.length > 0 
+        ? anomalyResult.reasons.join('; ') 
+        : 'Regular attendance pattern.';
 
       stats[status as keyof typeof stats]++;
       analysisData.push({
-        user_id: group.user_id,
-        name: group.name || 'N/A',
-        date: group.date,
+        user_id: daily.userId,
+        name: daily.userName || 'N/A',
+        date: daily.date,
         in: inTimeStr,
         out: outTimeStr,
         duration: durationStr,
@@ -190,6 +201,16 @@ export const AttendanceService = {
         statement: statement
       });
     });
+
+    // Generate AI Insights
+    const { AIInsightsService } = await import('./aiInsightsService.js');
+    const aiInsights = await AIInsightsService.generateAttendanceInsights(
+      stats,
+      analysisData,
+      filters.start_date && filters.end_date 
+        ? { start: filters.start_date, end: filters.end_date }
+        : undefined
+    );
 
     const fonts = {
       Roboto: {
@@ -206,7 +227,48 @@ export const AttendanceService = {
         { text: `Generated on: ${new Date().toLocaleString()}`, style: 'subheader' },
         { text: '\n' },
         
+        // AI Insights Section
+        { text: 'AI-POWERED INSIGHTS & RECOMMENDATIONS', style: 'sectionTitle' },
+        { text: '\n' },
+        
+        // Risk Level Badge
+        {
+          table: {
+            widths: ['*'],
+            body: [
+              [{
+                text: `RISK LEVEL: ${aiInsights.riskLevel.toUpperCase()}`,
+                style: 'riskBadge',
+                fillColor: aiInsights.riskLevel === 'critical' ? '#d32f2f' :
+                          aiInsights.riskLevel === 'high' ? '#ed6c02' :
+                          aiInsights.riskLevel === 'medium' ? '#f57c00' : '#2e7d32',
+                color: '#ffffff',
+                alignment: 'center',
+                bold: true
+              }]
+            ]
+          },
+          layout: 'noBorders'
+        },
+        { text: '\n' },
+        
+        // Executive Summary
+        { text: 'Executive Summary', style: 'subsectionTitle' },
+        { text: aiInsights.summary, style: 'bodyText', margin: [0, 5, 0, 10] },
+        
+        // Key Findings
+        { text: 'Key Findings', style: 'subsectionTitle' },
+        {
+          ul: aiInsights.keyFindings.map((finding: string) => ({
+            text: finding,
+            style: 'bodyText'
+          })),
+          margin: [0, 5, 0, 15]
+        },
+        
         // Stats Summary
+        { text: 'STATISTICAL OVERVIEW', style: 'sectionTitle' },
+        { text: '\n' },
         {
           columns: [
             {
@@ -237,10 +299,11 @@ export const AttendanceService = {
         },
         { text: '\n\n' },
         { text: 'DETAILED BEHAVIORAL ANALYSIS', style: 'sectionTitle' },
+        { text: 'Summary Table', style: 'subsectionTitle' },
         {
           table: {
             headerRows: 1,
-            widths: [50, '*', 60, 50, 50, 40, 50, '*'],
+            widths: [40, '*', 70, 50, 50, 50, 60],
             body: [
               [
                 { text: 'ID', style: 'tableHeader' },
@@ -248,9 +311,8 @@ export const AttendanceService = {
                 { text: 'Date', style: 'tableHeader' },
                 { text: 'In', style: 'tableHeader' },
                 { text: 'Out', style: 'tableHeader' },
-                { text: 'Dur', style: 'tableHeader' },
-                { text: 'Status', style: 'tableHeader' },
-                { text: 'Statement', style: 'tableHeader' }
+                { text: 'Duration', style: 'tableHeader' },
+                { text: 'Status', style: 'tableHeader' }
               ],
               ...analysisData.map(row => [
                 row.user_id,
@@ -259,14 +321,58 @@ export const AttendanceService = {
                 row.in,
                 row.out,
                 row.duration,
-                { text: row.status, color: row.status === 'Dangerous' ? '#d32f2f' : row.status === 'Abnormal' ? '#ed6c02' : '#2e7d32', bold: true },
-                { text: row.statement, fontSize: 9 }
+                { 
+                  text: row.status, 
+                  color: row.status === 'Dangerous' ? '#d32f2f' : row.status === 'Abnormal' ? '#ed6c02' : '#2e7d32', 
+                  bold: true,
+                  alignment: 'center'
+                }
               ])
             ]
           },
           layout: 'lightHorizontalLines'
         },
         { text: '\n\n' },
+        
+        // Detailed Findings Section - Only for Dangerous and Abnormal cases
+        { text: 'Detailed Findings & Explanations', style: 'subsectionTitle' },
+        { text: 'Cases requiring attention:', style: 'bodyText', margin: [0, 5, 0, 10] },
+        ...analysisData
+          .filter((row: any) => row.status === 'Dangerous' || row.status === 'Abnormal')
+          .map((row: any, index: number) => ({
+            stack: [
+              {
+                columns: [
+                  { 
+                    text: `${index + 1}. ${row.name} (ID: ${row.user_id})`, 
+                    style: 'findingTitle',
+                    width: '*'
+                  },
+                  { 
+                    text: row.status, 
+                    style: 'findingBadge',
+                    color: '#ffffff',
+                    fillColor: row.status === 'Dangerous' ? '#d32f2f' : '#ed6c02',
+                    alignment: 'center',
+                    width: 80
+                  }
+                ]
+              },
+              { 
+                text: `Date: ${row.date} | Time In: ${row.in} | Time Out: ${row.out} | Duration: ${row.duration}`,
+                style: 'findingMeta',
+                margin: [0, 2, 0, 5]
+              },
+              { 
+                text: row.statement,
+                style: 'findingStatement',
+                margin: [10, 0, 0, 10]
+              }
+            ],
+            margin: [0, 0, 0, 15]
+          })),
+        
+        { text: '\n' },
         { text: 'RAW ATTENDANCE LOGS', style: 'sectionTitle' },
         {
           table: {
@@ -296,6 +402,13 @@ export const AttendanceService = {
         header: { fontSize: 22, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
         subheader: { fontSize: 10, alignment: 'center', color: '#666' },
         sectionTitle: { fontSize: 14, bold: true, margin: [0, 10, 0, 10], color: '#333' },
+        subsectionTitle: { fontSize: 12, bold: true, margin: [0, 5, 0, 5], color: '#444' },
+        bodyText: { fontSize: 10, color: '#333', lineHeight: 1.4 },
+        riskBadge: { fontSize: 12, bold: true, margin: [0, 5, 0, 5] },
+        findingTitle: { fontSize: 11, bold: true, color: '#333' },
+        findingBadge: { fontSize: 9, bold: true, margin: [2, 2, 2, 2] },
+        findingMeta: { fontSize: 9, color: '#666', italics: true },
+        findingStatement: { fontSize: 10, color: '#444', lineHeight: 1.3 },
         statsLabel: { fontSize: 10, color: '#666', alignment: 'center' },
         statsValue: { fontSize: 18, bold: true, alignment: 'center' },
         tableHeader: { bold: true, fontSize: 10, fillColor: '#f3f4f6', margin: [0, 5, 0, 5] }
@@ -375,5 +488,134 @@ export const AttendanceService = {
       thisWeekPresent,
       thisMonthPresent,
     };
+  },
+
+  generateCSV: async (filters: any): Promise<string> => {
+    // Fetch all records for the CSV (max 10000 for safety)
+    const logs = await AttendanceModel.getAll(10000, 0, filters);
+
+    // CSV Header
+    const headers = [
+      'ID',
+      'User ID',
+      'User Name',
+      'User Type',
+      'Attendance Type',
+      'Timestamp',
+      'Date',
+      'Time',
+      'Day of Week'
+    ];
+
+    // Build CSV rows
+    const rows = logs.map((log: any) => {
+      const timestamp = new Date(log.timestamp);
+      const date = timestamp.toISOString().split('T')[0];
+      const time = timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dayOfWeek = timestamp.toLocaleDateString('en-US', { weekday: 'long' });
+
+      return [
+        log.id,
+        log.user_id,
+        `"${(log.user_name || 'N/A').replace(/"/g, '""')}"`, // Escape quotes in names
+        log.user_type,
+        log.attendance_type,
+        timestamp.toISOString(),
+        date,
+        time,
+        dayOfWeek
+      ].join(',');
+    });
+
+    // Add summary statistics at the top
+    const totalRecords = logs.length;
+    const timeIns = logs.filter((l: any) => l.attendance_type === 'time-in').length;
+    const timeOuts = logs.filter((l: any) => l.attendance_type === 'time-out').length;
+    const uniqueUsers = new Set(logs.map((l: any) => l.user_id)).size;
+
+    const summary = [
+      `"Attendance Export Report"`,
+      `"Generated on: ${new Date().toLocaleString()}"`,
+      `"Total Records: ${totalRecords}"`,
+      `"Time-Ins: ${timeIns}"`,
+      `"Time-Outs: ${timeOuts}"`,
+      `"Unique Users: ${uniqueUsers}"`,
+      `"Date Range: ${filters.start_date || 'All'} to ${filters.end_date || 'All'}"`,
+      '',
+      ''
+    ];
+
+    // Combine summary + headers + data
+    return [...summary, headers.join(','), ...rows].join('\n');
+  },
+
+  exportAnalyticsToCSV: async () => {
+    const { CSVExport } = await import('../utils/csvExport.js');
+    
+    // Fetch all analytics data
+    const [monthlyTrends, dailyTrends, peakHours, deptDist, weeklyPerf] = await Promise.all([
+      AttendanceModel.getMonthlyTrends(),
+      AttendanceModel.getDailyTrends(),
+      AttendanceModel.getPeakHours(),
+      AttendanceModel.getDepartmentDistribution(),
+      AttendanceModel.getWeeklyPerformance()
+    ]);
+
+    let csvContent = '';
+
+    // Section 1: Monthly Trends
+    csvContent += 'MONTHLY ATTENDANCE TRENDS\n';
+    csvContent += 'Month,Attendance Count\n';
+    monthlyTrends.forEach((item: any) => {
+      csvContent += `${CSVExport.escapeCSV(item.month)},${item.count}\n`;
+    });
+    csvContent += '\n';
+
+    // Section 2: Daily Trends (Last 30 Days)
+    csvContent += 'DAILY ATTENDANCE TRENDS (Last 30 Days)\n';
+    csvContent += 'Date,Attendance Count\n';
+    dailyTrends.forEach((item: any) => {
+      csvContent += `${CSVExport.escapeCSV(item.date)},${item.count}\n`;
+    });
+    csvContent += '\n';
+
+    // Section 3: Peak Hours Analysis
+    csvContent += 'PEAK HOURS ANALYSIS\n';
+    csvContent += 'Hour,Attendance Count\n';
+    peakHours.forEach((item: any) => {
+      csvContent += `${CSVExport.escapeCSV(item.hour)},${item.count}\n`;
+    });
+    csvContent += '\n';
+
+    // Section 4: Department/Course Distribution
+    csvContent += 'ATTENDANCE DISTRIBUTION BY DEPARTMENT/COURSE\n';
+    csvContent += 'Category,Attendance Count\n';
+    deptDist.forEach((item: any) => {
+      csvContent += `${CSVExport.escapeCSV(item.name)},${item.value}\n`;
+    });
+    csvContent += '\n';
+
+    // Section 5: Weekly Performance
+    csvContent += 'WEEKLY PERFORMANCE\n';
+    csvContent += 'Week,Day,Attendance Count\n';
+    weeklyPerf.forEach((item: any) => {
+      csvContent += `${CSVExport.escapeCSV(item.week || 'N/A')},${CSVExport.escapeCSV(item.day || 'N/A')},${item.count}\n`;
+    });
+    csvContent += '\n';
+
+    // Summary Statistics
+    const totalRecords = dailyTrends.reduce((sum: number, item: any) => sum + item.count, 0);
+    const avgDaily = dailyTrends.length > 0 ? (totalRecords / dailyTrends.length).toFixed(1) : 0;
+    const peakHour = peakHours.length > 0 ? peakHours.reduce((max: any, item: any) => item.count > max.count ? item : max) : null;
+
+    csvContent += 'SUMMARY STATISTICS\n';
+    csvContent += 'Metric,Value\n';
+    csvContent += `Total Records (Last 30 Days),${totalRecords}\n`;
+    csvContent += `Average Daily Attendance,${avgDaily}\n`;
+    csvContent += `Peak Hour,${peakHour ? peakHour.hour : 'N/A'}\n`;
+    csvContent += `Peak Hour Count,${peakHour ? peakHour.count : 'N/A'}\n`;
+    csvContent += `Export Date,${new Date().toLocaleString()}\n`;
+
+    return csvContent;
   },
 };

@@ -175,4 +175,45 @@ export const UserService = {
       }
     }
   },
+
+  exportToCSV: async (filters?: any) => {
+    const { CSVExport } = await import('../utils/csvExport.js');
+    
+    // Fetch all users (max 10000 for safety)
+    const users = await UserModel.getAll(10000, 0, filters);
+    const totalCount = await UserModel.getTotalCount(filters);
+    
+    // Define CSV headers
+    const headers = [
+      { key: 'id', label: 'ID' },
+      { key: 'student_id', label: 'Student ID' },
+      { key: 'first_name', label: 'First Name' },
+      { key: 'last_name', label: 'Last Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'course_name', label: 'Course' },
+      { key: 'year_name', label: 'Year Level' },
+      { key: 'created_at', label: 'Registered Date' },
+    ];
+    
+    // Format data for CSV
+    const data = users.map((user: any) => ({
+      id: user.id,
+      student_id: user.student_id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      course_name: user.course_name || 'N/A',
+      year_name: user.year_name || 'N/A',
+      created_at: new Date(user.created_at).toLocaleDateString(),
+    }));
+    
+    // Generate summary
+    const summary = [
+      { label: 'Total Users', value: totalCount },
+      { label: 'Export Date', value: new Date().toLocaleString() },
+      { label: 'User Type', value: 'College Students' },
+    ];
+    
+    return CSVExport.generateCSVWithSummary(data, headers, summary);
+  },
 };

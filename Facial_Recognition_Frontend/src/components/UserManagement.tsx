@@ -174,8 +174,31 @@ const UserManagement = ({ userType }: UserManagementProps) => {
     }
   }, [videoStream]);
 
-  const downloadCSV = () => {
-    console.log('Downloading CSV...');
+  const downloadCSV = async () => {
+    try {
+      setLoading(true);
+      const filters = {
+        search: searchQuery || undefined,
+        course: selectedFilter || undefined,
+        year: selectedYear || undefined,
+      };
+      
+      if (userType === 'college') {
+        await userService.college.exportToCSV(filters);
+      } else if (userType === 'shs') {
+        await userService.shs.exportToCSV(filters);
+      } else if (userType === 'faculty') {
+        await userService.faculty.exportToCSV(filters);
+      } else if (userType === 'guests') {
+        // For guests, we'll need to add this to guestService
+        console.log('Guest CSV export not yet implemented');
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearFilters = () => {

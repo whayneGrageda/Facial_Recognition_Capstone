@@ -7,21 +7,17 @@ import '../admin/Dashboard.css';
 const ModeratorDashboardHome = () => {
   const { user } = useAuth();
   const [securityAlerts, setSecurityAlerts] = useState<SecurityAlert[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchSecurityAlerts();
   }, []);
 
   const fetchSecurityAlerts = async () => {
-    setLoading(true);
     try {
       const alerts = await securityAlertService.getRecentUnresolved(5);
       setSecurityAlerts(alerts);
     } catch (error) {
       console.error('Error fetching security alerts:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

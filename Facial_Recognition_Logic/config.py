@@ -42,6 +42,8 @@ class Config:
     # Liveness Detection (Anti-Spoofing)
     ENABLE_LIVENESS = os.getenv('ENABLE_LIVENESS', 'True').lower() == 'true'
     LIVENESS_THRESHOLD = float(os.getenv('LIVENESS_THRESHOLD', '0.7'))
+    SPOOF_BLOCK_DURATION = float(os.getenv('SPOOF_BLOCK_DURATION', '10.0'))  # Seconds to block recognition after spoof detected
+    SPOOF_INSTANT_THRESHOLD = float(os.getenv('SPOOF_INSTANT_THRESHOLD', '0.4'))  # Liveness score below this = instant SPOOF (high confidence)
 
     # AI Reasoning Agent
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')

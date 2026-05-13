@@ -17,6 +17,7 @@
   "license": "ISC",
   "description": "Facial Recognition Backend - TypeScript Node.js MVC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@types/pdfmake": "^0.3.2",
     "axios": "^1.6.5",
     "bcryptjs": "^2.4.3",

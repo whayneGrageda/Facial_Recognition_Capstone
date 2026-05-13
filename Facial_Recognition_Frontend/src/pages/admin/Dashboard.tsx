@@ -1,4 +1,3 @@
- import { useAuth } from '../../contexts/AuthContext';
 import { 
   Clock, 
   AlertTriangle, 
@@ -13,7 +12,6 @@ import type { Attendance } from '../../types';
 import './Dashboard.css';
 
 const Dashboard = () => {
-  const { user } = useAuth();
   const [securityAlerts, setSecurityAlerts] = useState<SecurityAlert[]>([]);
   const [recentAttendance, setRecentAttendance] = useState<Attendance[]>([]);
   const [newRecordIds, setNewRecordIds] = useState<Set<number>>(new Set());

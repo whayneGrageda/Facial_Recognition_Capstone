@@ -9,6 +9,7 @@ router.use(authenticateJWT);
 
 // Admin and moderator only
 router.get('/', authorizeRoles('admin', 'moderator'), FacultyUserController.getFacultyUsers);
+router.get('/export', authorizeRoles('admin', 'moderator'), FacultyUserController.exportToCSV);
 router.get('/archived', authorizeRoles('admin', 'moderator'), FacultyUserController.getArchivedFacultyUsers);
 router.get('/search', authorizeRoles('admin', 'moderator'), FacultyUserController.searchFacultyUsers);
 router.get('/:id', authorizeRoles('admin', 'moderator'), FacultyUserController.getFacultyUserById);

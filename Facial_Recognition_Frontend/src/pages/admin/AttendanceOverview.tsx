@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, GraduationCap, TrendingUp, CheckCircle, Calendar, RefreshCw, BarChart3, Clock, PieChart as PieChartIcon, Award } from 'lucide-react';
+import { Users, GraduationCap, TrendingUp, CheckCircle, Calendar, RefreshCw, BarChart3, Clock, PieChart as PieChartIcon, Award, Download } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
 import { attendanceService } from '../../services/attendanceService';
 import { userService } from '../../services/userService';
@@ -9,6 +9,7 @@ import './AttendanceOverview.css';
 
 const AttendanceOverview = () => {
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeCourses: 0,
@@ -138,6 +139,18 @@ const AttendanceOverview = () => {
     refreshData();
   }, []);
 
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      await attendanceService.exportAnalyticsToCSV();
+    } catch (error) {
+      console.error('Error exporting analytics CSV:', error);
+      alert('Failed to export analytics CSV. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const statCards = [
     {
       icon: Users,
@@ -185,8 +198,12 @@ const AttendanceOverview = () => {
 
   return (
     <div className="attendance-overview">
-      {/* Refresh Button */}
+      {/* Action Buttons */}
       <div className="overview-header">
+        <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" disabled={exporting}>
+          <Download size={16} />
+          <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+        </button>
         <button onClick={refreshData} className="btn btn-primary btn-sm refresh-btn" disabled={loading}>
           <RefreshCw size={16} className={loading ? 'spinning' : ''} />
           <span>Refresh Data</span>

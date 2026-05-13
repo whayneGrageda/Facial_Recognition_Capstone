@@ -68,6 +68,23 @@ export const userService = {
     bulkDelete: (ids: number[]) => {
       return apiService.post('/users/bulk-delete', { ids });
     },
+
+    // Export to CSV
+    exportToCSV: async (filters?: UserFilters) => {
+      const blob = await apiService.download('/users/export', filters);
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = `college_users_${timestamp}.csv`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    },
   },
 
   // SHS Users
@@ -128,6 +145,23 @@ export const userService = {
     bulkDelete: (ids: number[]) => {
       return apiService.post('/shs-users/bulk-delete', { ids });
     },
+
+    // Export to CSV
+    exportToCSV: async (filters?: UserFilters) => {
+      const blob = await apiService.download('/shs-users/export', filters);
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = `shs_users_${timestamp}.csv`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    },
   },
 
   // Faculty Users
@@ -187,6 +221,23 @@ export const userService = {
 
     bulkDelete: (ids: number[]) => {
       return apiService.post('/faculty-users/bulk-delete', { ids });
+    },
+
+    // Export to CSV
+    exportToCSV: async (filters?: UserFilters) => {
+      const blob = await apiService.download('/faculty-users/export', filters);
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = `faculty_users_${timestamp}.csv`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     },
   },
 };
