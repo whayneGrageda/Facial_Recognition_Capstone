@@ -7,6 +7,7 @@ import {
   Users,
   CalendarCheck,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { securityAlertService, SecurityAlert } from '../../services/securityAlertService';
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [newRecordIds, setNewRecordIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [selectedAlert, setSelectedAlert] = useState<SecurityAlert | null>(null);
   const previousIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
@@ -295,13 +297,20 @@ const Dashboard = () => {
                       <AlertTriangle size={14} />
                       {alert.alert_type === 'SPOOF' ? 'Non-Human Signature Detected' : 'Unauthorized Access Attempt'}
                     </p>
-                    <p className="alert-desc">{alert.ai_analysis}</p>
+                    <p className="alert-desc" onClick={() => setSelectedAlert(alert)} style={{ cursor: 'pointer' }}>
+                      {alert.ai_analysis}
+                    </p>
 
                     <div className="alert-actions">
                       <span className="camera-chip">{alert.camera_type.toUpperCase()}</span>
-                      <button className="btn-resolve" onClick={() => handleResolveAlert(alert.id)}>
-                        Resolve
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn-view-analysis" onClick={() => setSelectedAlert(alert)}>
+                          View Analysis
+                        </button>
+                        <button className="btn-resolve" onClick={() => handleResolveAlert(alert.id)}>
+                          Resolve
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -311,6 +320,52 @@ const Dashboard = () => {
         </div>
 
       </div>
+
+      {/* ── AI Analysis Modal ── */}
+      {selectedAlert && (
+        <div className="alert-modal-overlay" onClick={() => setSelectedAlert(null)}>
+          <div className="alert-modal" onClick={e => e.stopPropagation()}>
+            <div className="alert-modal-header">
+              <div className="alert-modal-title">
+                <AlertTriangle size={16} />
+                <span>{selectedAlert.alert_type === 'SPOOF' ? 'Non-Human Signature Detected' : 'Unauthorized Access Attempt'}</span>
+                <span className="alert-type-badge" style={{ marginLeft: '0.5rem' }}>{selectedAlert.alert_type}</span>
+              </div>
+              <button className="alert-modal-close" onClick={() => setSelectedAlert(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {selectedAlert.image_path && (
+              <div className="alert-modal-img">
+                <img
+                  src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}/security-alert-images/${selectedAlert.image_path}`}
+                  alt="Alert capture"
+                  onError={e => ((e.target as HTMLImageElement).style.display = 'none')}
+                />
+                <div className="alert-img-label">{selectedAlert.camera_type.toUpperCase()} Camera</div>
+              </div>
+            )}
+
+            <div className="alert-modal-body">
+              <p className="alert-modal-meta">
+                <span className="camera-chip">{selectedAlert.camera_type.toUpperCase()}</span>
+                <span className="alert-time">{getTimeAgo(selectedAlert.created_at)}</span>
+              </p>
+              <p className="alert-modal-analysis">{selectedAlert.ai_analysis}</p>
+            </div>
+
+            <div className="alert-modal-footer">
+              <button className="alert-modal-dismiss" onClick={() => setSelectedAlert(null)}>
+                Dismiss
+              </button>
+              <button className="btn-resolve" onClick={() => { handleResolveAlert(selectedAlert.id); setSelectedAlert(null); }}>
+                Mark as Resolved
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
