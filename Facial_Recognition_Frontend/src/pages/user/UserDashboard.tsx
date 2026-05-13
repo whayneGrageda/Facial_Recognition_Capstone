@@ -221,7 +221,7 @@ const UserDashboard = () => {
             <div className="stat-bento-label">Present Days</div>
             <div className="stat-bento-value">
               <span className="stat-bento-number">{loading ? '—' : stats.presentDays}</span>
-              <span className="stat-bento-sub">/ {stats.totalDays || '—'} Days</span>
+              <span className="stat-bento-sub">Days</span>
             </div>
           </div>
           <div className="month-bars">

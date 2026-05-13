@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { ModeratorModel } from '../models/moderatorModel.js';
 import { CreateModeratorRequest, UpdateModeratorRequest } from '../types/moderatorEntity.js';
+import { SeedGeneratorService } from './seedGeneratorService.js';
 
 export const ModeratorService = {
   getModerators: async (limit: number, offset: number) => {
@@ -37,6 +38,8 @@ export const ModeratorService = {
 
     const moderator = await ModeratorModel.create(modData);
     const { password, ...modWithoutPassword } = moderator;
+    // Regenerate seed file for disaster recovery backup
+    SeedGeneratorService.regenerate().catch(() => {});
     return modWithoutPassword;
   },
 

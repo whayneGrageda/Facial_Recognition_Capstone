@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { UserModel } from '../models/userModel.js';
 import { CreateUserRequest, UpdateUserRequest } from '../types/userEntity.js';
 import { FaceImageService } from './faceImageService.js';
+import { SeedGeneratorService } from './seedGeneratorService.js';
 
 export const UserService = {
   getUsers: async (limit: number, offset: number, filters?: any) => {
@@ -47,6 +48,8 @@ export const UserService = {
 
     const user = await UserModel.create(userData);
     const { password, ...userWithoutPassword } = user;
+    // Regenerate seed file for disaster recovery backup
+    SeedGeneratorService.regenerate().catch(() => {});
     return userWithoutPassword;
   },
 

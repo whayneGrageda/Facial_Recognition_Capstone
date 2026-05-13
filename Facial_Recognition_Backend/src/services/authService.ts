@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer';
 import { AuthModel } from '../models/authModel.js';
 import { LoginRequest, LoginResponse } from '../types/authEntity.js';
 import { NotificationService } from './notificationService.js';
+import { SeedGeneratorService } from './seedGeneratorService.js';
 
 // In-memory store for verification codes (in production, use Redis or database)
 const verificationCodes = new Map<string, { code: string; expiresAt: Date; attempts: number }>();
@@ -165,6 +166,9 @@ export const AuthService = {
       console.error('Failed to send registration notification:', notifError);
     }
 
+    // Regenerate seed file for disaster recovery backup
+    SeedGeneratorService.regenerate().catch(() => {});
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = newUser;
 
@@ -216,6 +220,9 @@ export const AuthService = {
       console.error('Failed to send registration notification:', notifError);
     }
 
+    // Regenerate seed file for disaster recovery backup
+    SeedGeneratorService.regenerate().catch(() => {});
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = newUser;
 
@@ -261,6 +268,9 @@ export const AuthService = {
     } catch (notifError) {
       console.error('Failed to send registration notification:', notifError);
     }
+
+    // Regenerate seed file for disaster recovery backup
+    SeedGeneratorService.regenerate().catch(() => {});
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = newUser;

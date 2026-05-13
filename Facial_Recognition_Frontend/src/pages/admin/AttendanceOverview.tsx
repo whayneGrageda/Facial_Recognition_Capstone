@@ -14,13 +14,13 @@ import { moderatorService } from '../../services/moderatorService';
 import './AttendanceOverview.css';
 
 // ── Heatmap data: 5 days × 12 hours (Mon–Fri, 8a–7p)
-// 0=none, 1=low, 2=mid, 3=high
+// All zeros by default — will show as empty until real data is available
 const HEATMAP_DATA = [
-  [0,0,2,3,3,2,0,0,0,0,0,0],
-  [0,2,3,3,2,2,0,0,0,0,0,0],
-  [0,0,2,3,3,2,0,0,0,0,0,0],
-  [0,0,2,2,3,3,2,0,0,0,0,0],
-  [0,0,0,2,2,2,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0],
 ];
 const HEATMAP_DAYS  = ['Mon','Tue','Wed','Thu','Fri'];
 const HEATMAP_HOURS = ['8a','9a','10a','11a','12p','1p','2p','3p','4p','5p','6p','7p'];
@@ -116,13 +116,9 @@ const AttendanceOverview = () => {
         level: i === 0 ? 'high' : i === 1 ? 'medium' : 'low',
         levelLabel: i === 0 ? 'High' : i === 1 ? 'Medium' : 'Low',
       }))
-    : [
-        { label: '08:00 - 09:00', pct: 95, level: 'high',   levelLabel: 'High' },
-        { label: '12:00 - 13:00', pct: 65, level: 'medium', levelLabel: 'Medium' },
-        { label: '16:00 - 17:00', pct: 30, level: 'low',    levelLabel: 'Low' },
-      ];
+    : [];
 
-  const avgPresence = stats.attendanceRate || 92;
+  const avgPresence = stats.attendanceRate || 0;
 
   return (
     <div className="attendance-overview">
@@ -315,19 +311,27 @@ const AttendanceOverview = () => {
             <div className="ao-card-header">
               <h3 className="ao-card-title">Peak Hours</h3>
             </div>
-            <div className="ao-peak-list">
-              {peakHoursBars.map((item, i) => (
-                <div key={i} className="ao-peak-item">
-                  <div className="ao-peak-row">
-                    <span className="ao-peak-label">{item.label}</span>
-                    <span className={`ao-peak-level ${item.level}`}>{item.levelLabel}</span>
+            {peakHoursBars.length === 0 ? (
+              <div className="ao-empty" style={{ padding: '2rem 1rem' }}>
+                <TrendingUp size={32} />
+                <p>No data yet</p>
+                <span>Peak hours will appear once attendance is recorded</span>
+              </div>
+            ) : (
+              <div className="ao-peak-list">
+                {peakHoursBars.map((item, i) => (
+                  <div key={i} className="ao-peak-item">
+                    <div className="ao-peak-row">
+                      <span className="ao-peak-label">{item.label}</span>
+                      <span className={`ao-peak-level ${item.level}`}>{item.levelLabel}</span>
+                    </div>
+                    <div className="ao-peak-track">
+                      <div className={`ao-peak-fill ${item.level}`} style={{ width: `${item.pct}%` }} />
+                    </div>
                   </div>
-                  <div className="ao-peak-track">
-                    <div className={`ao-peak-fill ${item.level}`} style={{ width: `${item.pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

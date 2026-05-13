@@ -25,16 +25,29 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
 
 function App() {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
 
   if (isLoading) {
     return <LoadingSpinner fullScreen />;
   }
 
+  // Redirect authenticated users away from the landing page to their dashboard
+  const getHomePage = () => {
+    if (!isAuthenticated) return <LandingPage />;
+    const role = user?.role;
+    if (role === 'admin')     return <Navigate to="/admin" replace />;
+    if (role === 'moderator') return <Navigate to="/moderator" replace />;
+    return <Navigate to="/user/dashboard" replace />;
+  };
+
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={
+        isAuthenticated
+          ? <Navigate to={user?.role === 'admin' ? '/admin' : user?.role === 'moderator' ? '/moderator' : '/user/dashboard'} replace />
+          : <LoginPage />
+      } />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
@@ -77,7 +90,7 @@ function App() {
       />
 
       {/* Default Route */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={getHomePage()} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { ShsUserModel } from '../models/shsUserModel.js';
 import { CreateShsUserRequest, UpdateShsUserRequest } from '../types/shsUserEntity.js';
 import { FaceImageService } from './faceImageService.js';
+import { SeedGeneratorService } from './seedGeneratorService.js';
 
 export const ShsUserService = {
   getUsers: async (limit: number, offset: number, filters?: any) => {
@@ -40,6 +41,8 @@ export const ShsUserService = {
 
     const user = await ShsUserModel.create(userData);
     const { password, ...userWithoutPassword } = user;
+    // Regenerate seed file for disaster recovery backup
+    SeedGeneratorService.regenerate().catch(() => {});
     return userWithoutPassword;
   },
 

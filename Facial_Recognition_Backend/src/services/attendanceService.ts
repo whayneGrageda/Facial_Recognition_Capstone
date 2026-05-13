@@ -459,26 +459,44 @@ export const AttendanceService = {
     
     // Use SQL aggregation instead of fetching 10,000 rows
     const dbStats = await AttendanceModel.getUserAggregatedStats(userId);
-    
-    const presentDays = parseInt(dbStats.total_days as any) || 0;
+
+    // Count distinct days present THIS MONTH only (not all-time)
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
+
+    const monthResult = await query(
+      `SELECT COUNT(DISTINCT DATE(timestamp)) as month_days
+       FROM attendance
+       WHERE user_id = $1
+         AND attendance_type = 'time-in'
+         AND DATE(timestamp) >= $2`,
+      [userId, startOfMonthStr]
+    );
+    const presentDays = parseInt(monthResult.rows[0]?.month_days) || 0;
     
     // Calculate attendance rate (assuming 20 working days per month)
     const totalExpectedDays = 20;
     const attendanceRate = Math.min(100, Math.round((presentDays / totalExpectedDays) * 100));
     
     // For week/month specific counts, use targeted queries instead of full scan
-    const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
-    const weekRecords = await AttendanceModel.getUserAttendanceHistory(userId, userType, 100);
-    const thisWeekPresent = weekRecords.filter(a => 
-      a.attendance_type === 'time-in' && new Date(a.timestamp) >= startOfWeek
-    ).length;
-    const thisMonthPresent = weekRecords.filter(a => 
-      a.attendance_type === 'time-in' && new Date(a.timestamp) >= startOfMonth
-    ).length;
+    const weekRecords = await AttendanceModel.getUserAttendanceHistory(userId, userType, 200);
+
+    // Count distinct calendar days (not raw records) for week and month
+    const thisWeekPresent = new Set(
+      weekRecords
+        .filter(a => a.attendance_type === 'time-in' && new Date(a.timestamp) >= startOfWeek)
+        .map(a => new Date(a.timestamp).toISOString().split('T')[0])
+    ).size;
+
+    const thisMonthPresent = new Set(
+      weekRecords
+        .filter(a => a.attendance_type === 'time-in' && new Date(a.timestamp) >= startOfMonth)
+        .map(a => new Date(a.timestamp).toISOString().split('T')[0])
+    ).size;
     
     return {
       totalDays: totalExpectedDays,

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { FacultyUserModel } from '../models/facultyUserModel.js';
 import { CreateFacultyUserRequest, UpdateFacultyUserRequest } from '../types/facultyUserEntity.js';
 import { FaceImageService } from './faceImageService.js';
+import { SeedGeneratorService } from './seedGeneratorService.js';
 
 export const FacultyUserService = {
   getUsers: async (limit: number, offset: number, filters?: any) => {
@@ -40,6 +41,8 @@ export const FacultyUserService = {
 
     const user = await FacultyUserModel.create(userData);
     const { password, ...userWithoutPassword } = user;
+    // Regenerate seed file for disaster recovery backup
+    SeedGeneratorService.regenerate().catch(() => {});
     return userWithoutPassword;
   },
 
