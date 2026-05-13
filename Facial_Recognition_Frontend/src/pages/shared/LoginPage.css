@@ -24,7 +24,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #0A0602 0%, #3E2008 50%, #0A0602 100%);
+  background: #0A0602;
 }
 
 .grid-pattern {
@@ -33,44 +33,15 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: linear-gradient(rgba(201, 168, 76, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(201, 168, 76, 0.1) 1px, transparent 1px);
-  background-size: 50px 50px;
-  opacity: 0.3;
+  background-image:
+    linear-gradient(rgba(201,168,76,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,76,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 1;
 }
 
 .floating-shape {
-  position: absolute;
-  animation: float 6s ease-in-out infinite;
-}
-
-.shape-1 {
-  top: 15%;
-  right: 10%;
-  width: 120px;
-  height: 120px;
-  background: linear-gradient(45deg, rgba(201, 168, 76, 0.2), rgba(139, 105, 20, 0.2));
-  transform: rotate(45deg);
-}
-
-.shape-2 {
-  bottom: 20%;
-  left: 8%;
-  width: 80px;
-  height: 160px;
-  background: linear-gradient(to top, rgba(62, 32, 8, 0.15), rgba(107, 58, 31, 0.15));
-  transform: rotate(-12deg);
-  animation-delay: 2s;
-}
-
-.shape-3 {
-  top: 40%;
-  left: 15%;
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(45deg, rgba(156, 107, 60, 0.2), rgba(107, 58, 31, 0.2));
-  transform: rotate(12deg);
-  animation-delay: 4s;
+  display: none;
 }
 
 .radial-glow {
@@ -80,19 +51,20 @@
 }
 
 .glow-1 {
-  top: 0;
+  top: -100px;
   right: 0;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.15) 0%, rgba(201, 168, 76, 0.05) 50%, transparent 100%);
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 70%);
+  animation-delay: 0s;
 }
 
 .glow-2 {
-  bottom: 0;
-  left: 0;
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(107, 58, 31, 0.12) 0%, rgba(107, 58, 31, 0.04) 50%, transparent 100%);
+  bottom: -100px;
+  left: -50px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(62,32,8,0.6) 0%, transparent 70%);
   animation-delay: 4s;
 }
 
