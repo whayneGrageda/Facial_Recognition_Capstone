@@ -204,15 +204,22 @@ class FaceRecognizer:
     # ---- Known face loading ----
 
     def load_known_faces(self):
-        """Load known faces from the known_faces directory."""
+        """Load known faces from known_faces/is_active/ only.
+        
+        Only active users are recognized. Deactivated/archived users
+        are stored in known_faces/is_inactive/ and are intentionally ignored.
+        """
         if self._load_from_cache():
             return
 
-        known_faces_path = getattr(self.config, 'KNOWN_FACES_PATH', 'known_faces')
+        # Use is_active subfolder — only recognize active users
+        known_faces_path = getattr(self.config, 'KNOWN_FACES_ACTIVE_PATH',
+                                   os.path.join(getattr(self.config, 'KNOWN_FACES_PATH', 'known_faces'), 'is_active'))
         print(f"[v2] Loading known faces from {known_faces_path}...")
 
         if not os.path.exists(known_faces_path):
-            print(f"[v2] WARNING: Known faces directory not found: {known_faces_path}")
+            print(f"[v2] WARNING: Active faces directory not found: {known_faces_path}")
+            os.makedirs(known_faces_path, exist_ok=True)
             return
 
         for person_name in sorted(os.listdir(known_faces_path)):
@@ -225,7 +232,7 @@ class FaceRecognizer:
         self._save_to_cache()
 
         unique_people = len(set(self.known_face_names))
-        print(f"[v2] Loaded {len(self.known_face_names)} encodings for {unique_people} people")
+        print(f"[v2] Loaded {len(self.known_face_names)} encodings for {unique_people} active people")
 
     def _load_person_images(self, person_dir: str, person_name: str):
         """Load and encode all images for one person."""
@@ -324,8 +331,9 @@ class FaceRecognizer:
             ]
             self.known_face_names = data.get('names', [])
 
-            # Validate cache against known_faces directory
-            known_faces_path = getattr(self.config, 'KNOWN_FACES_PATH', 'known_faces')
+            # Validate cache against known_faces/is_active/ directory
+            known_faces_path = getattr(self.config, 'KNOWN_FACES_ACTIVE_PATH',
+                                       os.path.join(getattr(self.config, 'KNOWN_FACES_PATH', 'known_faces'), 'is_active'))
             if os.path.exists(known_faces_path):
                 num_folders = len([
                     name for name in os.listdir(known_faces_path)
@@ -356,7 +364,8 @@ class FaceRecognizer:
         try:
             os.makedirs(os.path.dirname(self.cache_file) or '.', exist_ok=True)
             
-            known_faces_path = getattr(self.config, 'KNOWN_FACES_PATH', 'known_faces')
+            known_faces_path = getattr(self.config, 'KNOWN_FACES_ACTIVE_PATH',
+                                       os.path.join(getattr(self.config, 'KNOWN_FACES_PATH', 'known_faces'), 'is_active'))
             content_hash = self._compute_content_hash(known_faces_path)
             
             data = {

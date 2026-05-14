@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS users (
     face_image_3 BYTEA,
     archived_at TIMESTAMP WITH TIME ZONE,
     status VARCHAR DEFAULT 'active',
-    archived_by INTEGER REFERENCES admins(id)
+    archived_by INTEGER REFERENCES admins(id),
+    deactivated_at TIMESTAMP WITH TIME ZONE,
+    deactivated_by INTEGER
 );
 
 -- Create shs_users table (senior high school students)
@@ -43,7 +45,9 @@ CREATE TABLE IF NOT EXISTS shs_users (
     face_image_3 BYTEA,
     archived_at TIMESTAMP WITH TIME ZONE,
     status VARCHAR DEFAULT 'active',
-    archived_by INTEGER REFERENCES admins(id)
+    archived_by INTEGER REFERENCES admins(id),
+    deactivated_at TIMESTAMP WITH TIME ZONE,
+    deactivated_by INTEGER
 );
 
 -- Create faculty_users table
@@ -65,7 +69,9 @@ CREATE TABLE IF NOT EXISTS faculty_users (
     face_image_3 BYTEA,
     archived_at TIMESTAMP WITH TIME ZONE,
     status VARCHAR DEFAULT 'active',
-    archived_by INTEGER REFERENCES admins(id)
+    archived_by INTEGER REFERENCES admins(id),
+    deactivated_at TIMESTAMP WITH TIME ZONE,
+    deactivated_by INTEGER
 );
 
 -- Create guests table

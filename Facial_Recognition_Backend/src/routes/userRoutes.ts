@@ -18,6 +18,8 @@ router.put('/:id', authorizeRoles('admin', 'moderator'), UserController.updateUs
 router.delete('/:id', authorizeRoles('admin'), UserController.deleteUser);
 router.delete('/:id/permanent', authorizeRoles('admin'), UserController.permanentDeleteUser);
 router.patch('/:id/restore', authorizeRoles('admin', 'moderator'), UserController.restoreUser);
+router.patch('/:id/deactivate', authorizeRoles('admin', 'moderator'), UserController.deactivateUser);
+router.patch('/:id/reactivate', authorizeRoles('admin', 'moderator'), UserController.reactivateUser);
 router.post('/bulk-archive', authorizeRoles('admin'), UserController.bulkArchiveUsers);
 router.post('/bulk-restore', authorizeRoles('admin', 'moderator'), UserController.bulkRestoreUsers);
 router.post('/bulk-delete', authorizeRoles('admin'), UserController.bulkDeleteUsers);

@@ -67,17 +67,11 @@ export const FacultyUserService = {
   deleteUser: async (id: number, archivedBy?: number) => {
     const existing = await FacultyUserModel.findById(id);
     if (!existing) throw new Error('USER_NOT_FOUND');
-    
     await FacultyUserModel.delete(id, archivedBy);
-    
-    // Delete face images if user has a name
     if (existing.first_name && existing.last_name) {
       const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
-      try {
-        await FaceImageService.deleteFaceImages(fullName);
-        console.log(`Deleted face images for faculty user: ${fullName}`);
-      } catch (error) {
-        console.error(`Failed to delete face images for faculty user ${fullName}:`, error);
+      try { await FaceImageService.archiveFaceImages(fullName); } catch (error) {
+        console.error(`Failed to archive face images for faculty ${fullName}:`, error);
       }
     }
   },
@@ -115,8 +109,11 @@ export const FacultyUserService = {
     const existing = await FacultyUserModel.findById(id);
     if (!existing) throw new Error('USER_NOT_FOUND');
     if (existing.status !== 'archived') throw new Error('USER_NOT_ARCHIVED');
-    
     await FacultyUserModel.restore(id);
+    if (existing.first_name && existing.last_name) {
+      const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
+      try { await FaceImageService.restoreFaceImages(fullName); } catch {}
+    }
   },
 
   permanentDeleteUser: async (id: number) => {
@@ -138,11 +135,25 @@ export const FacultyUserService = {
   },
 
   bulkArchiveUsers: async (ids: number[], archivedBy?: number) => {
+    const users = await Promise.all(ids.map(id => FacultyUserModel.findById(id)));
     await FacultyUserModel.bulkArchive(ids, archivedBy);
+    for (const user of users) {
+      if (user?.first_name && user?.last_name) {
+        const fullName = `${user.first_name}${user.middle_initial ? ' ' + user.middle_initial : ''} ${user.last_name}`.trim();
+        try { await FaceImageService.archiveFaceImages(fullName); } catch {}
+      }
+    }
   },
 
   bulkRestoreUsers: async (ids: number[]) => {
+    const users = await Promise.all(ids.map(id => FacultyUserModel.findById(id)));
     await FacultyUserModel.bulkRestore(ids);
+    for (const user of users) {
+      if (user?.first_name && user?.last_name) {
+        const fullName = `${user.first_name}${user.middle_initial ? ' ' + user.middle_initial : ''} ${user.last_name}`.trim();
+        try { await FaceImageService.restoreFaceImages(fullName); } catch {}
+      }
+    }
   },
 
   bulkDeleteUsers: async (ids: number[]) => {
@@ -162,6 +173,28 @@ export const FacultyUserService = {
           console.error(`Failed to delete face images for faculty user ${fullName}:`, error);
         }
       }
+    }
+  },
+
+  deactivateUser: async (id: number, deactivatedBy: number) => {
+    const existing = await FacultyUserModel.findById(id);
+    if (!existing) throw new Error('USER_NOT_FOUND');
+    if (existing.status !== 'active') throw new Error('USER_NOT_ACTIVE');
+    await FacultyUserModel.deactivate(id, deactivatedBy);
+    if (existing.first_name && existing.last_name) {
+      const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
+      try { await FaceImageService.moveFaceImages(fullName, 'is_active', 'is_inactive'); } catch {}
+    }
+  },
+
+  reactivateUser: async (id: number) => {
+    const existing = await FacultyUserModel.findById(id);
+    if (!existing) throw new Error('USER_NOT_FOUND');
+    if (existing.status !== 'deactivated') throw new Error('USER_NOT_DEACTIVATED');
+    await FacultyUserModel.reactivate(id);
+    if (existing.first_name && existing.last_name) {
+      const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
+      try { await FaceImageService.moveFaceImages(fullName, 'is_inactive', 'is_active'); } catch {}
     }
   },
 

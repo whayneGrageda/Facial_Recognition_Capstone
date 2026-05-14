@@ -21,5 +21,9 @@ router.post('/update-password', AuthController.updatePassword);
 
 // Protected routes
 router.get('/profile', authenticateJWT, AuthController.getProfile);
+router.post('/deactivate-account', authenticateJWT, AuthController.deactivateAccount);
+
+// Public reactivation (user provides credentials to reactivate)
+router.post('/reactivate-account', AuthController.reactivateAccount);
 
 export default router;

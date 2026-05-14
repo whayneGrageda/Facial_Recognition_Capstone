@@ -215,6 +215,35 @@ export const bulkDeleteUsers = async (req: Request, res: Response) => {
   }
 };
 
+export const deactivateUser = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendResponse(res, API_MESSAGES.USER.INVALID_ID);
+
+    const deactivatedBy = req.user?.userId ?? id; // self or admin
+    await UserService.deactivateUser(id, deactivatedBy);
+    return sendResponse(res, { status: 200, message: 'Account deactivated successfully' });
+  } catch (error: any) {
+    if (error.message === 'USER_NOT_FOUND') return sendResponse(res, API_MESSAGES.USER.NOT_FOUND);
+    if (error.message === 'USER_NOT_ACTIVE') return sendResponse(res, { status: 400, message: 'User is not active' });
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};
+
+export const reactivateUser = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendResponse(res, API_MESSAGES.USER.INVALID_ID);
+
+    await UserService.reactivateUser(id);
+    return sendResponse(res, { status: 200, message: 'Account reactivated successfully' });
+  } catch (error: any) {
+    if (error.message === 'USER_NOT_FOUND') return sendResponse(res, API_MESSAGES.USER.NOT_FOUND);
+    if (error.message === 'USER_NOT_DEACTIVATED') return sendResponse(res, { status: 400, message: 'User is not deactivated' });
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};
+
 export const exportToCSV = async (req: Request, res: Response) => {
   try {
     const filters = {

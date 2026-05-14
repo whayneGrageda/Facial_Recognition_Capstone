@@ -80,15 +80,13 @@ export const UserService = {
     
     await UserModel.delete(id, archivedBy);
     
-    // Delete face images if user has a name
+    // Move face images to is_inactive/ (preserves them for restore)
     if (existing.first_name && existing.last_name) {
       const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
       try {
-        await FaceImageService.deleteFaceImages(fullName);
-        console.log(`Deleted face images for user: ${fullName}`);
+        await FaceImageService.archiveFaceImages(fullName);
       } catch (error) {
-        console.error(`Failed to delete face images for user ${fullName}:`, error);
-        // Don't throw error - user is already deleted from DB
+        console.error(`Failed to archive face images for user ${fullName}:`, error);
       }
     }
   },
@@ -129,6 +127,16 @@ export const UserService = {
     if (existing.status !== 'archived') throw new Error('USER_NOT_ARCHIVED');
     
     await UserModel.restore(id);
+
+    // Move face images back to is_active/
+    if (existing.first_name && existing.last_name) {
+      const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
+      try {
+        await FaceImageService.restoreFaceImages(fullName);
+      } catch (error) {
+        console.error(`Failed to restore face images for user ${fullName}:`, error);
+      }
+    }
   },
 
   permanentDeleteUser: async (id: number) => {
@@ -151,11 +159,34 @@ export const UserService = {
   },
 
   bulkArchiveUsers: async (ids: number[], archivedBy?: number) => {
+    // Fetch users first to get their names for face image moves
+    const users = await Promise.all(ids.map(id => UserModel.findById(id)));
     await UserModel.bulkArchive(ids, archivedBy);
+    for (const user of users) {
+      if (user?.first_name && user?.last_name) {
+        const fullName = `${user.first_name}${user.middle_initial ? ' ' + user.middle_initial : ''} ${user.last_name}`.trim();
+        try {
+          await FaceImageService.archiveFaceImages(fullName);
+        } catch (error) {
+          console.error(`Failed to archive face images for ${fullName}:`, error);
+        }
+      }
+    }
   },
 
   bulkRestoreUsers: async (ids: number[]) => {
+    const users = await Promise.all(ids.map(id => UserModel.findById(id)));
     await UserModel.bulkRestore(ids);
+    for (const user of users) {
+      if (user?.first_name && user?.last_name) {
+        const fullName = `${user.first_name}${user.middle_initial ? ' ' + user.middle_initial : ''} ${user.last_name}`.trim();
+        try {
+          await FaceImageService.restoreFaceImages(fullName);
+        } catch (error) {
+          console.error(`Failed to restore face images for ${fullName}:`, error);
+        }
+      }
+    }
   },
 
   bulkDeleteUsers: async (ids: number[]) => {
@@ -175,6 +206,40 @@ export const UserService = {
           console.error(`Failed to delete face images for user ${fullName}:`, error);
           // Continue with other deletions
         }
+      }
+    }
+  },
+
+  deactivateUser: async (id: number, deactivatedBy: number) => {
+    const existing = await UserModel.findById(id);
+    if (!existing) throw new Error('USER_NOT_FOUND');
+    if (existing.status !== 'active') throw new Error('USER_NOT_ACTIVE');
+
+    await UserModel.deactivate(id, deactivatedBy);
+
+    if (existing.first_name && existing.last_name) {
+      const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
+      try {
+        await FaceImageService.moveFaceImages(fullName, 'is_active', 'is_inactive');
+      } catch (error) {
+        console.error(`Failed to move face images for ${fullName}:`, error);
+      }
+    }
+  },
+
+  reactivateUser: async (id: number) => {
+    const existing = await UserModel.findById(id);
+    if (!existing) throw new Error('USER_NOT_FOUND');
+    if (existing.status !== 'deactivated') throw new Error('USER_NOT_DEACTIVATED');
+
+    await UserModel.reactivate(id);
+
+    if (existing.first_name && existing.last_name) {
+      const fullName = `${existing.first_name}${existing.middle_initial ? ' ' + existing.middle_initial : ''} ${existing.last_name}`.trim();
+      try {
+        await FaceImageService.moveFaceImages(fullName, 'is_inactive', 'is_active');
+      } catch (error) {
+        console.error(`Failed to restore face images for ${fullName}:`, error);
       }
     }
   },

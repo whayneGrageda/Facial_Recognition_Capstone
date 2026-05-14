@@ -636,4 +636,90 @@ This is an automated message. Please do not reply to this email.`,
       message: 'Password updated successfully'
     };
   },
+
+  // Self-deactivate account (user deactivates their own account)
+  deactivateAccount: async (userId: number, userType: string, currentPassword: string): Promise<void> => {
+    const { AuthModel } = await import('../models/authModel.js');
+
+    // Find the user to verify password
+    let user: any = null;
+    if (userType === 'college') {
+      const { UserModel } = await import('../models/userModel.js');
+      user = await UserModel.findById(userId);
+    } else if (userType === 'shs') {
+      const { ShsUserModel } = await import('../models/shsUserModel.js');
+      user = await ShsUserModel.findById(userId);
+    } else if (userType === 'faculty') {
+      const { FacultyUserModel } = await import('../models/facultyUserModel.js');
+      user = await FacultyUserModel.findById(userId);
+    }
+
+    if (!user) throw new Error('USER_NOT_FOUND');
+
+    // Verify current password
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) throw new Error('INVALID_CREDENTIALS');
+
+    // Deactivate via the appropriate service
+    if (userType === 'college') {
+      const { UserService } = await import('./userService.js');
+      await UserService.deactivateUser(userId, userId);
+    } else if (userType === 'shs') {
+      const { ShsUserService } = await import('./shsUserService.js');
+      await ShsUserService.deactivateUser(userId, userId);
+    } else if (userType === 'faculty') {
+      const { FacultyUserService } = await import('./facultyUserService.js');
+      await FacultyUserService.deactivateUser(userId, userId);
+    }
+  },
+
+  // Self-reactivate account (user reactivates their own account by logging in)
+  reactivateAccount: async (email: string, password: string, userType: string): Promise<void> => {
+    const { AuthModel } = await import('../models/authModel.js');
+
+    let user: any = null;
+    if (userType === 'college') {
+      const { UserModel } = await import('../models/userModel.js');
+      const sql = `SELECT * FROM users WHERE email = $1 AND status = 'deactivated'`;
+      const { query } = await import('../db/index.js');
+      const { rows } = await query(sql, [email]);
+      user = rows[0] || null;
+      if (user) {
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) throw new Error('INVALID_CREDENTIALS');
+        await UserModel.reactivate(user.id);
+        const { FaceImageService } = await import('./faceImageService.js');
+        const fullName = `${user.first_name}${user.middle_initial ? ' ' + user.middle_initial : ''} ${user.last_name}`.trim();
+        try { await FaceImageService.moveFaceImages(fullName, 'is_inactive', 'is_active'); } catch {}
+      }
+    } else if (userType === 'shs') {
+      const { ShsUserModel } = await import('../models/shsUserModel.js');
+      const { query } = await import('../db/index.js');
+      const { rows } = await query(`SELECT * FROM shs_users WHERE email = $1 AND status = 'deactivated'`, [email]);
+      user = rows[0] || null;
+      if (user) {
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) throw new Error('INVALID_CREDENTIALS');
+        await ShsUserModel.reactivate(user.id);
+        const { FaceImageService } = await import('./faceImageService.js');
+        const fullName = `${user.first_name}${user.middle_initial ? ' ' + user.middle_initial : ''} ${user.last_name}`.trim();
+        try { await FaceImageService.moveFaceImages(fullName, 'is_inactive', 'is_active'); } catch {}
+      }
+    } else if (userType === 'faculty') {
+      const { FacultyUserModel } = await import('../models/facultyUserModel.js');
+      const { query } = await import('../db/index.js');
+      const { rows } = await query(`SELECT * FROM faculty_users WHERE email = $1 AND status = 'deactivated'`, [email]);
+      user = rows[0] || null;
+      if (user) {
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) throw new Error('INVALID_CREDENTIALS');
+        await FacultyUserModel.reactivate(user.id);
+        const { FaceImageService } = await import('./faceImageService.js');
+        const fullName = `${user.first_name}${user.middle_initial ? ' ' + user.middle_initial : ''} ${user.last_name}`.trim();
+        try { await FaceImageService.moveFaceImages(fullName, 'is_inactive', 'is_active'); } catch {}
+      }
+    }
+
+    if (!user) throw new Error('USER_NOT_FOUND');
+  },
 };

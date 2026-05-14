@@ -59,7 +59,8 @@ const AttendanceOverview = () => {
 
       const totalUsers =
         (col.totalCount || 0) + (shs.totalCount || 0) +
-        (fac.totalCount || 0) + (guests.totalCount || 0) + (mods.totalCount || 0);
+        (fac.totalCount || 0) + (guests.totalCount || 0);
+        // Note: moderators excluded — they don't have attendance records
 
       // Fix: count unique users present today (not raw record count)
       const uniqueUsersToday = new Set(todayAtt.map((r: any) => r.user_id)).size;

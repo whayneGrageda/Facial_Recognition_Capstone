@@ -17,6 +17,8 @@ class Config:
     
     # Recognition settings
     KNOWN_FACES_PATH = os.getenv('KNOWN_FACES_PATH', 'known_faces')
+    KNOWN_FACES_ACTIVE_PATH = os.path.join(KNOWN_FACES_PATH, 'is_active')
+    KNOWN_FACES_INACTIVE_PATH = os.path.join(KNOWN_FACES_PATH, 'is_inactive')
     MODEL_PATH = os.getenv('MODEL_PATH', 'models')
     CACHE_FILE = os.path.join(MODEL_PATH, 'face_encodings_cache_v2.pkl')
     
@@ -69,4 +71,6 @@ class Config:
         """Validate that required paths exist"""
         # Create directories if they don't exist
         os.makedirs(self.KNOWN_FACES_PATH, exist_ok=True)
+        os.makedirs(self.KNOWN_FACES_ACTIVE_PATH, exist_ok=True)
+        os.makedirs(self.KNOWN_FACES_INACTIVE_PATH, exist_ok=True)
         os.makedirs(self.MODEL_PATH, exist_ok=True)

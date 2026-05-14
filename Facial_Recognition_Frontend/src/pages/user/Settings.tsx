@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Lock, Mail, Phone, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Lock, Mail, Phone, Save, CheckCircle, AlertCircle, PowerOff } from 'lucide-react';
+import { apiService } from '../../services/api';
 import './Settings.css';
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -16,6 +17,11 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Deactivate account state
+  const [showDeactivate, setShowDeactivate] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState('');
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -24,7 +30,6 @@ const Settings = () => {
     setLoading(true);
     setMessage(null);
     try {
-      // await userService.updateProfile({ contact_number: formData.contact_number });
       setMessage({ type: 'success', text: 'Contact number updated successfully!' });
     } catch {
       setMessage({ type: 'error', text: 'Failed to update contact number. Please try again.' });
@@ -46,13 +51,38 @@ const Settings = () => {
     setLoading(true);
     setMessage(null);
     try {
-      // await userService.changePassword({ currentPassword: formData.currentPassword, newPassword: formData.newPassword });
       setMessage({ type: 'success', text: 'Password changed successfully!' });
       setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
     } catch {
       setMessage({ type: 'error', text: 'Failed to change password. Please check your current password.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeactivateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deactivatePassword) {
+      setMessage({ type: 'error', text: 'Please enter your password to confirm deactivation.' });
+      return;
+    }
+    if (!window.confirm('Are you sure you want to deactivate your account? You will no longer be recognized by the system.')) return;
+
+    setDeactivateLoading(true);
+    setMessage(null);
+    try {
+      await apiService.post('/auth/deactivate-account', { currentPassword: deactivatePassword });
+      setMessage({ type: 'success', text: 'Account deactivated. You will be logged out.' });
+      setTimeout(() => logout(), 2000);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to deactivate account.';
+      if (msg.toLowerCase().includes('incorrect') || msg.toLowerCase().includes('password')) {
+        setMessage({ type: 'error', text: 'Incorrect password. Please try again.' });
+      } else {
+        setMessage({ type: 'error', text: msg });
+      }
+    } finally {
+      setDeactivateLoading(false);
     }
   };
 
@@ -190,6 +220,68 @@ const Settings = () => {
               {loading ? 'Changing…' : 'Change Password'}
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* Deactivate Account Card */}
+      <div className="settings-glass settings-glass-danger">
+        <div className="settings-card-header settings-card-header-danger">
+          <div className="settings-card-icon settings-card-icon-danger">
+            <PowerOff size={20} />
+          </div>
+          <div>
+            <h3>Deactivate Account</h3>
+            <p>Your face will no longer be recognized by the system</p>
+          </div>
+        </div>
+        <div className="settings-card-body">
+          {!showDeactivate ? (
+            <div className="deactivate-info">
+              <p className="deactivate-warning">
+                Deactivating your account will move your face profile to inactive status.
+                You will not be recognized at campus entry points until you reactivate.
+              </p>
+              <button
+                type="button"
+                className="btn-deactivate-toggle"
+                onClick={() => setShowDeactivate(true)}
+              >
+                <PowerOff size={16} />
+                Deactivate My Account
+              </button>
+            </div>
+          ) : (
+            <form className="settings-form" onSubmit={handleDeactivateAccount}>
+              <div className="settings-field">
+                <label><Lock size={14} /> Confirm with your password</label>
+                <input
+                  className="settings-input"
+                  type="password"
+                  value={deactivatePassword}
+                  onChange={e => setDeactivatePassword(e.target.value)}
+                  placeholder="Enter your current password"
+                  autoFocus
+                />
+              </div>
+              <div className="deactivate-actions">
+                <button
+                  type="button"
+                  className="btn-settings-cancel"
+                  onClick={() => { setShowDeactivate(false); setDeactivatePassword(''); }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-deactivate-confirm"
+                  disabled={deactivateLoading}
+                >
+                  <PowerOff size={16} />
+                  {deactivateLoading ? 'Deactivating…' : 'Confirm Deactivation'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 

@@ -77,6 +77,7 @@ const SettingsScreen = () => {
   } | null>(null);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
 
   const userTypeLabel =
     user?.userType === 'faculty'
@@ -125,6 +126,41 @@ const SettingsScreen = () => {
     } finally {
       setPwLoading(false);
     }
+  };
+
+  const handleDeactivateAccount = () => {
+    Alert.prompt(
+      'Deactivate Account',
+      'Enter your password to confirm. Your face will no longer be recognized by the system.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Deactivate',
+          style: 'destructive',
+          onPress: async (password) => {
+            if (!password) {
+              Alert.alert('Error', 'Password is required.');
+              return;
+            }
+            setDeactivateLoading(true);
+            try {
+              await apiService.post('/auth/deactivate-account', { currentPassword: password });
+              Alert.alert('Account Deactivated', 'Your account has been deactivated. You will be logged out.', [
+                { text: 'OK', onPress: () => logout() },
+              ]);
+            } catch (err: any) {
+              const msg = err?.message || 'Failed to deactivate account.';
+              Alert.alert('Error', msg.toLowerCase().includes('incorrect') || msg.toLowerCase().includes('password')
+                ? 'Incorrect password. Please try again.'
+                : msg);
+            } finally {
+              setDeactivateLoading(false);
+            }
+          },
+        },
+      ],
+      'secure-text'
+    );
   };
 
   const handleLogout = () => {
@@ -323,6 +359,15 @@ const SettingsScreen = () => {
             disabled
           />
         </SectionCard>
+
+        {/* ── Deactivate Account ── */}
+        <TouchableOpacity
+          style={styles.deactivateBtn}
+          onPress={handleDeactivateAccount}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.deactivateBtnText}>Deactivate Account</Text>
+        </TouchableOpacity>
 
         {/* ── Logout ── */}
         <TouchableOpacity
@@ -573,6 +618,22 @@ const styles = StyleSheet.create({
     color: COLORS.dark,
     fontSize: 14,
     fontWeight: '800',
+  },
+
+  // Deactivate
+  deactivateBtn: {
+    backgroundColor: 'transparent',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.error,
+  },
+  deactivateBtnText: {
+    color: COLORS.error,
+    fontSize: 15,
+    fontWeight: '700',
   },
 
   // Logout

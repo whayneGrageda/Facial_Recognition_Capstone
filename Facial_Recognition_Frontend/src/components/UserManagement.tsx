@@ -1330,9 +1330,9 @@ const UserManagement = ({ userType }: UserManagementProps) => {
                   )}
                 </div>
                 <div className="camera-instructions">
-                  <p>📸 Position your face in the center</p>
-                  <p>💡 Ensure good lighting</p>
-                  <p>⏱️ Stay still for ~5 seconds ({TARGET_FRAMES} frames)</p>
+                  <p>Position your face in the center</p>
+                  <p>Ensure good lighting</p>
+                  <p>Stay still for ~5 seconds ({TARGET_FRAMES} frames)</p>
                 </div>
               </div>
             )}

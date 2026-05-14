@@ -305,3 +305,58 @@ export const updatePassword = async (req: Request, res: Response) => {
     return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
   }
 };
+
+// Self-deactivate account (requires current password confirmation)
+export const deactivateAccount = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const userType = req.user?.userType;
+    const { currentPassword } = req.body;
+
+    if (!userId || !userType) {
+      return sendResponse(res, API_MESSAGES.AUTH.TOKEN_INVALID);
+    }
+
+    if (!currentPassword) {
+      return sendResponse(res, { status: 400, message: 'Current password is required' });
+    }
+
+    await AuthService.deactivateAccount(userId, userType, currentPassword);
+    return sendResponse(res, { status: 200, message: 'Account deactivated successfully' });
+  } catch (error: any) {
+    if (error.message === 'INVALID_CREDENTIALS') {
+      return sendResponse(res, { status: 401, message: 'Incorrect password' });
+    }
+    if (error.message === 'USER_NOT_FOUND') {
+      return sendResponse(res, API_MESSAGES.USER.NOT_FOUND);
+    }
+    if (error.message === 'USER_NOT_ACTIVE') {
+      return sendResponse(res, { status: 400, message: 'Account is not active' });
+    }
+    console.error('Deactivate account error:', error);
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};
+
+// Self-reactivate account (user logs in with credentials to reactivate)
+export const reactivateAccount = async (req: Request, res: Response) => {
+  try {
+    const { email, password, userType } = req.body;
+
+    if (!email || !password || !userType) {
+      return sendResponse(res, API_MESSAGES.GENERAL.BAD_REQUEST);
+    }
+
+    await AuthService.reactivateAccount(email, password, userType);
+    return sendResponse(res, { status: 200, message: 'Account reactivated successfully. You can now log in.' });
+  } catch (error: any) {
+    if (error.message === 'INVALID_CREDENTIALS') {
+      return sendResponse(res, { status: 401, message: 'Incorrect email or password' });
+    }
+    if (error.message === 'USER_NOT_FOUND') {
+      return sendResponse(res, { status: 404, message: 'No deactivated account found with that email' });
+    }
+    console.error('Reactivate account error:', error);
+    return sendResponse(res, API_MESSAGES.GENERAL.INTERNAL_SERVER_ERROR);
+  }
+};

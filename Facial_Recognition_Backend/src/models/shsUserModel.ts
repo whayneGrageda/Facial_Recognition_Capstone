@@ -263,6 +263,24 @@ export const ShsUserModel = {
     await query(sql, [id]);
   },
 
+  deactivate: async (id: number, deactivatedBy: number): Promise<void> => {
+    const sql = `
+      UPDATE shs_users
+      SET status = 'deactivated', deactivated_at = NOW(), deactivated_by = $2
+      WHERE id = $1 AND status = 'active'
+    `;
+    await query(sql, [id, deactivatedBy]);
+  },
+
+  reactivate: async (id: number): Promise<void> => {
+    const sql = `
+      UPDATE shs_users
+      SET status = 'active', deactivated_at = NULL, deactivated_by = NULL
+      WHERE id = $1 AND status = 'deactivated'
+    `;
+    await query(sql, [id]);
+  },
+
   permanentDelete: async (id: number): Promise<void> => {
     const sql = `DELETE FROM shs_users WHERE id = $1`;
     await query(sql, [id]);
